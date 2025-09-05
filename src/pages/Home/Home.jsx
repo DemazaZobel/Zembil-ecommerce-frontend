@@ -13,16 +13,13 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-x-auto">
       {/* Navbar */}
-      <header>
-        <Navbar />
-      </header>
-
+    
       {/* Hero Section */}
       <main className="flex-1 -mt-20">
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-20 flex flex-col-reverse md:flex-row items-center justify-between py-16 md:py-24">
           {/* Left: Text */}
-          <div className="md:w-1/2 text-center md:text-left space-y-4 sm:space-y-6">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-sans text-[#3674B5] font-bold leading-tight">
+          <div className="md:w-1/2 text-center md:text-left space-y-4 sm:space-y-6 p-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-sans text-[#3674B5] font-bold leading-tight">
               Zembil E-Commerce
             </h1>
             <p className="text-gray-700 text-base sm:text-lg md:text-xl lg:text-2xl font-sans leading-relaxed">

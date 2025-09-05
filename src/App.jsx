@@ -8,9 +8,10 @@ import Cart from "./pages/Cart/Cart.jsx";
 import Checkout from "./pages/Checkout/Checkout.jsx";
 import Login from "./pages/Auth/Login.jsx";
 import Register from "./pages/Auth/Register.jsx";
+import Profile from "./pages/Auth/profile.jsx";
 import Dashboard from "./pages/Admin/Dashboard.jsx";
 import Footer from "./components/common/Footer.jsx";
-import CategoryPage from "./components/Category/CategoryPage.jsx";
+import CategoryPage from "./pages/Category/CategoryPage.jsx";
 
 const App = () => {
   return (
@@ -33,6 +34,7 @@ const App = () => {
           <Route path="/men" element={<CategoryPage category="men" />} />
           <Route path="/women" element={<CategoryPage category="women" />} />
           <Route path="/kids" element={<CategoryPage category="kids" />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>
 

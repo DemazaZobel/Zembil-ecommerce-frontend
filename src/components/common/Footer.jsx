@@ -9,7 +9,7 @@ export default function Footer() {
           {/* Logo / Company */}
           <div>
             <h3 className="text-2xl font-bold text-white">Zembil</h3>
-            <p className="mt-2 text-gray-400 max-w-xs">
+            <p className="mt-2 text-white max-w-xs">
               Trendy fashion for Men, Women, and Kids with fast delivery and amazing deals.
             </p>
           </div>
@@ -70,8 +70,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="mt-10 border-t border-gray-800 pt-6 text-center text-gray-500 text-sm">
-          &copy; {new Date().getFullYear()} Zembil. All rights reserved.
+        <div className="mt-10 border-t border-gray-400 pt-6 text-center text-white text-sm">
+          &copy; {new Date().getFullYear() } <span className="text-white font-semibold">Zembil. All rights reserved. </span>
         </div>
       </div>
     </footer>

@@ -10,12 +10,7 @@ import { FaArrowRight, FaShoppingBag } from "react-icons/fa";
 export default function MenSection() {
   const [hoveredImage, setHoveredImage] = useState(null);
 
-  const categories = [
-    { name: "Casual Wear", count: "24 items" },
-    { name: "Formal Attire", count: "18 items" },
-    { name: "Accessories", count: "12 items" },
-    { name: "Footwear", count: "16 items" },
-  ];
+
 
   const images = [
     { src: menmain, alt: "Men's main fashion", colSpan: 3, rowSpan: 2 },
@@ -26,12 +21,12 @@ export default function MenSection() {
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white text-center overflow-hidden">
+    <section className="py-16 md:py-24 bg-white text-center overflow-hidden">
       {/* Title + Slogan */}
       <div className="mb-12 md:mb-16 px-4">
         <div className="inline-block mb-3">
-          <span className="text-xs uppercase tracking-widest text-gray-500 font-semibold">
-            Collection
+          <span className="text-xs uppercase tracking-widest text-secondary font-semibold">
+            Men's Collection
           </span>
         </div>
         <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
@@ -42,20 +37,8 @@ export default function MenSection() {
         </p>
       </div>
 
-      {/* Category Quick Links */}
-      <div className="max-w-5xl mx-auto mb-12 md:mb-16 px-4">
-        <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-          {categories.map((category, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 px-6 py-3 border border-gray-100 hover:border-[#3674B5]/20 cursor-pointer"
-            >
-              <h3 className="font-medium text-gray-800">{category.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">{category.count}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      
+     
 
       {/* Image Grid */}
       <div className="max-w-7xl mx-auto px-4">

@@ -1,12 +1,15 @@
+// src/features/store.js
 import { configureStore } from "@reduxjs/toolkit";
-import cartReducer from "./cart/cartSlice";
-import userReducer from "./user/userSlice";
-import uiReducer from "./ui/uiSlice";
+import adminReducer from "./adminSlice";
+import deliveryReducer from "./deliverySlice";
+import authReducer from "./authSlice";
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
-    cart: cartReducer,
-    user: userReducer,
-    ui: uiReducer,
+    admin: adminReducer,
+    delivery: deliveryReducer,
+    auth: authReducer,
   },
 });
+
+export default store; // ✅ default export

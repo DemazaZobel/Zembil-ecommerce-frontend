@@ -7,12 +7,12 @@ import WomenSection from "../../components/women/womenSection.jsx";
 import MenSection from "../../components/Men/menSection.jsx";
 import KidsSection from "../../components/Kids/kidessection.jsx";
 import ContactUs from "../../components/contact/contact.jsx";
-
+import { useSelector } from "react-redux";
 
 const Home = () => {
+  const { info } = useSelector((state) => state.user);
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-x-auto">
-      {/* Navbar */}
     
       {/* Hero Section */}
       <main className="flex-1 -mt-20">
@@ -20,12 +20,21 @@ const Home = () => {
           {/* Left: Text */}
           <div className="md:w-1/2 text-center md:text-left space-y-4 sm:space-y-6 p-4">
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-sans text-[#3674B5] font-bold leading-tight">
-              Zembil E-Commerce
+                  {info ? (
+              <h1 className="text-3xl font-bold text-primary">
+                Welcome, {info.name}!
+                Zembil Market
+              </h1>
+            ) : (
+              <h1 className="text-4xl ">
+                Welcome to Zembil Market
+              </h1>
+            )}
             </h1>
             <p className="text-gray-700 text-base sm:text-lg md:text-xl lg:text-2xl font-sans leading-relaxed">
               Discover the best fashion for Men, Women, and Kids with fast delivery and amazing deals.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-3 sm:space-y-0 sm:space-x-4 mt-6">
+            {info ? (<p className="px-6 py-2 sm:px-8 sm:py-3 bg-[#3674B5] text-white font-semibold rounded-2xl hover:bg-blue-700 transition text-base sm:text-lg w-full sm:w-40 text-center"> Happy Shopping! </p>) : (<div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-3 sm:space-y-0 sm:space-x-4 mt-6">
               <a
                 href="/register"
                 className="px-6 py-2 sm:px-8 sm:py-3 bg-[#3674B5] text-white font-semibold rounded-2xl hover:bg-blue-700 transition text-base sm:text-lg w-full sm:w-40 text-center"
@@ -38,9 +47,10 @@ const Home = () => {
               >
                 Login
               </a>
-            </div>
-          </div>
+            </div>)}
 
+          </div>
+          
           {/* Right: Image */}
           <div className="md:w-1/2 flex justify-center md:justify-end mb-10 md:mb-0">
             <img
@@ -55,6 +65,7 @@ const Home = () => {
       {/* Sales Section */}
       <Sales />
       {/* New Arrivals Section */}
+     
       <NewArrivals />
       <WomenSection />
       <MenSection />

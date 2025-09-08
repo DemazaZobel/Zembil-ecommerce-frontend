@@ -1,0 +1,58 @@
+// src/data/products.js
+
+export const products = [
+  {
+    id: 1,
+    name: "Classic White Shirt",
+    description: "A timeless white shirt perfect for any occasion.",
+    price: 35,
+    rating: 4,
+    category: "men",
+    image: "https://via.placeholder.com/400x400?text=White+Shirt",
+  },
+  {
+    id: 2,
+    name: "Denim Jeans",
+    description: "Comfortable and stylish denim jeans.",
+    price: 55,
+    rating: 5,
+    category: "men",
+    image: "https://via.placeholder.com/400x400?text=Denim+Jeans",
+  },
+  {
+    id: 3,
+    name: "Summer Dress",
+    description: "Lightweight floral dress for summer days.",
+    price: 45,
+    rating: 4,
+    category: "women",
+    image: "https://via.placeholder.com/400x400?text=Summer+Dress",
+  },
+  {
+    id: 4,
+    name: "Heels",
+    description: "Elegant high heels for evening occasions.",
+    price: 60,
+    rating: 3,
+    category: "women",
+    image: "https://via.placeholder.com/400x400?text=Heels",
+  },
+  {
+    id: 5,
+    name: "Kids T-Shirt",
+    description: "Colorful t-shirt designed for active kids.",
+    price: 20,
+    rating: 5,
+    category: "kids",
+    image: "https://via.placeholder.com/400x400?text=Kids+T-Shirt",
+  },
+  {
+    id: 6,
+    name: "Sneakers",
+    description: "Trendy sneakers suitable for all ages.",
+    price: 50,
+    rating: 4,
+    category: "kids",
+    image: "https://via.placeholder.com/400x400?text=Sneakers",
+  },
+];

@@ -43,9 +43,9 @@ function Navbar() {
       <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
         <NavLink to="/" className="font-bold text-2xl tracking-wide">
           {role === "admin"
-            ? "Admin Panel"
+            ? "Admin Page"
             : role === "delivery"
-            ? "Delivery Panel"
+            ? "Delivery Page"
             : "Zembil Ecommerce"}
         </NavLink>
 

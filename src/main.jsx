@@ -2,11 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import { Provider } from "react-redux";
-import { store } from "./features/store.js";
+import store from "./features/store"; // ✅ correct
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 
-// React Query client
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")).render(

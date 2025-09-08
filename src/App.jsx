@@ -68,8 +68,8 @@
 // export default App;
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Navbar from "./components/Navbar"; // matches Navbar.jsx
-import Footer from "./components/Footer";
+import Navbar from "./components/common/Navbar.jsx"; // matches Navbar.jsx
+import Footer from "./components/common/Footer.jsx";
 import { useSelector } from "react-redux";
 
 // Auth pages

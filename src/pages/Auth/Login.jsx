@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { useMutation } from "@tanstack/react-query";
-import { loginSuccess } from "../../features/authSlice"; // Redux action
+import { loginSuccess } from "../../features/auth/authSlice"; // Redux action
 import { loginUser } from "../../api/authApi";
 
 const Login = () => {

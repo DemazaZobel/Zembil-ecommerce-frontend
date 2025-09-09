@@ -34,7 +34,19 @@ const Home = () => {
             <p className="text-gray-700 text-base sm:text-lg md:text-xl lg:text-2xl font-sans leading-relaxed">
               Discover the best fashion for Men, Women, and Kids with fast delivery and amazing deals.
             </p>
-            {info ? (<p className="px-6 py-2 sm:px-8 sm:py-3 bg-[#3674B5] text-white font-semibold rounded-2xl hover:bg-blue-700 transition text-base sm:text-lg w-full sm:w-40 text-center"> Happy Shopping! </p>) : (<div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-3 sm:space-y-0 sm:space-x-4 mt-6">
+            {info ? (<p
+                onClick={() =>
+                  document.getElementById("new-arrivals")?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="cursor-pointer px-6 py-2 sm:px-8 sm:py-3 text-secondary font-semibold rounded-2xl 
+                transition text-base sm:text-md w-full sm:w-56 text-center flex items-center justify-center 
+                hover:bg-[#3674B5] hover:text-white group"
+              >
+                Journey Begins Here 
+                <span className="ml-2 animate-bounce group-hover:translate-y-1 transition-transform">↓</span>
+              </p>
+
+                ) : (<div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-3 sm:space-y-0 sm:space-x-4 mt-6">
               <a
                 href="/register"
                 className="px-6 py-2 sm:px-8 sm:py-3 bg-[#3674B5] text-white font-semibold rounded-2xl hover:bg-blue-700 transition text-base sm:text-lg w-full sm:w-40 text-center"
@@ -63,10 +75,12 @@ const Home = () => {
       </main>
 
       {/* Sales Section */}
-      <Sales />
-      {/* New Arrivals Section */}
-     
-      <NewArrivals />
+  
+        <Sales />
+
+      <section id="new-arrivals">
+        <NewArrivals />
+      </section>
       <WomenSection />
       <MenSection />
       <KidsSection />

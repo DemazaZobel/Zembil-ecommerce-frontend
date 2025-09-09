@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../../features/user/userSlice";
 import loginImg from "../../assets/login.png";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { Toaster } from "react-hot-toast";
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -13,6 +14,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation(); // to know where the user came from
   const { loading, error, info } = useSelector((state) => state.user);
+  const [alertMessage, setAlertMessage] = useState("");
 
   // Get redirect path from state, or default to "/"
   const from = location.state?.from?.pathname || "/";
@@ -33,8 +35,23 @@ const Login = () => {
     }
   }, [info, navigate, from]);
 
+  useEffect(() => {
+    if (location.state?.message) {
+      setAlertMessage(location.state.message);
+
+      // Clear state after showing the message
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 -mt-12 -mt-20 lg:-mt-40">
+    <>
+    <Toaster position="top-center" reverseOrder={false} />
+     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 -mt-12 -mt-20 lg:-mt-40">
+      <div className="max-w-md mx-auto mt-20 p-6  rounded">
+      
+      {/* Your login form here */}
+    </div>
       <h1 className="text-xl sm:text-2xl italic text-gray-600 mb-10 text-center">
         Caring Style, Delivering Smiles
       </h1>
@@ -112,6 +129,8 @@ const Login = () => {
         </div>
       </div>
     </div>
+    </>
+   
   );
 };
 

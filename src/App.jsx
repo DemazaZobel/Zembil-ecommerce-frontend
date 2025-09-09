@@ -12,6 +12,14 @@ import Profile from "./pages/Auth/profile.jsx";
 import Dashboard from "./pages/Admin/Dashboard.jsx";
 import CategoryPage from "./pages/Category/CategoryPage.jsx";
 import ProductDetails from "./pages/ProductDetail/ProductDetaiL.jsx";
+import AdminDashboard from "./pages/Admin/Dashboard.jsx";
+import AdminCategories from "./pages/Admin/Categories.jsx";
+import AdminProducts from "./pages/Admin/Product.jsx";
+import AdminOrders from "./pages/Admin/Order.jsx";
+import AdminUsers from "./pages/Admin/User.jsx";
+import AdminDeliveryStaff from "./pages/Admin/DeliveryStaff.jsx";
+import AdminSize from "./pages/Admin/Size.jsx";
+import AdminDeliveryZone from "./pages/Admin/DeliveryZone.jsx";
 
 // Wrapper component to access location
 const AppWrapper = () => {
@@ -41,6 +49,14 @@ const AppWrapper = () => {
           <Route path="/kids" element={<CategoryPage category="kids" />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/product/:id" element={<ProductDetails />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/categories" element={<AdminCategories />} />
+          <Route path="/admin/products" element={<AdminProducts />} />
+          <Route path="/admin/orders" element={<AdminOrders />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/deliverystaff" element={<AdminDeliveryStaff />} />
+          <Route path="/admin/size" element={<AdminSize />} />
+          <Route path="/admin/deliveryzone" element={<AdminDeliveryZone />} />
         </Routes>
       </main>
 

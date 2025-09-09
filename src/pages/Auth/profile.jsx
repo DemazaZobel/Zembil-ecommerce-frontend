@@ -1,28 +1,39 @@
 import React, { useState } from "react";
-import { FaHeart, FaTrash } from "react-icons/fa";
+import { FaTrash } from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../../features/user/userSlice";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
-  const [activeTab, setActiveTab] = useState("profile");
-  const [user, setUser] = useState({
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "+1 234 567 890",
-    address: "123 Main St, New York, USA",
-  });
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
+  const { info } = useSelector((state) => state.user); // get logged-in user from Redux
+
+  const [activeTab, setActiveTab] = useState("profile");
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState(user);
+  const [formData, setFormData] = useState({
+    name: info?.name || "",
+    email: info?.email || "",
+    phone: info?.phone || "", // optional field
+    address: info?.address || "", // optional field
+  });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSave = () => {
-    setUser(formData);
+    // Here you could dispatch an updateUser action to Redux/backend
     setEditing(false);
   };
 
-  // Dummy orders
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/"); // Redirect to home or login
+  };
+
+  // Dummy orders (replace with real API call if needed)
   const orders = [
     {
       id: "ORD12345",
@@ -45,18 +56,8 @@ const Profile = () => {
 
   // Dummy wishlist
   const [wishlist, setWishlist] = useState([
-    {
-      id: 1,
-      name: "Premium Leather Jacket",
-      price: "$70",
-      image: "https://via.placeholder.com/150",
-    },
-    {
-      id: 2,
-      name: "Running Sneakers",
-      price: "$60",
-      image: "https://via.placeholder.com/150",
-    },
+    { id: 1, name: "Premium Leather Jacket", price: "$70", image: "https://via.placeholder.com/150" },
+    { id: 2, name: "Running Sneakers", price: "$60", image: "https://via.placeholder.com/150" },
   ]);
 
   const removeFromWishlist = (id) => {
@@ -97,10 +98,8 @@ const Profile = () => {
                   alt="profile"
                   className="w-32 h-32 rounded-full object-cover border-4 border-gray-200 shadow-lg"
                 />
-                <h3 className="text-2xl font-semibold mt-4 text-gray-800">
-                  {user.name}
-                </h3>
-                <p className="text-gray-500">{user.email}</p>
+                <h3 className="text-2xl font-semibold mt-4 text-gray-800">{formData.name}</h3>
+                <p className="text-gray-500">{formData.email}</p>
               </div>
 
               <div className="flex-1">
@@ -111,7 +110,7 @@ const Profile = () => {
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
-                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full sm:w-full lg:w-[95%]"
+                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full"
                       placeholder="Full Name"
                     />
                     <input
@@ -119,7 +118,7 @@ const Profile = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full sm:w-full lg:w-[95%]"
+                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full"
                       placeholder="Email"
                     />
                     <input
@@ -127,7 +126,7 @@ const Profile = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full sm:w-full lg:w-[95%]"
+                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full"
                       placeholder="Phone"
                     />
                     <input
@@ -135,10 +134,9 @@ const Profile = () => {
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
-                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full sm:w-full lg:w-[95%]"
+                      className="border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none w-full"
                       placeholder="Address"
                     />
-
                     <div className="col-span-1 sm:col-span-2 flex gap-4">
                       <button
                         onClick={handleSave}
@@ -157,16 +155,14 @@ const Profile = () => {
                 ) : (
                   <div className="space-y-3 text-gray-700">
                     <p>
-                      <span className="font-medium">📧 Email:</span> {user.email}
+                      <span className="font-medium">📧 Email:</span> {formData.email}
                     </p>
                     <p>
-                      <span className="font-medium">📱 Phone:</span> {user.phone}
+                      <span className="font-medium">📱 Phone:</span> {formData.phone || "N/A"}
                     </p>
                     <p>
-                      <span className="font-medium">🏠 Address:</span>{" "}
-                      {user.address}
+                      <span className="font-medium">🏠 Address:</span> {formData.address || "N/A"}
                     </p>
-
                     <button
                       onClick={() => setEditing(true)}
                       className="mt-4 bg-primary text-white px-5 py-2 rounded-lg hover:bg-primary/90 transition"
@@ -194,7 +190,6 @@ const Profile = () => {
                         <p className="font-medium">{order.id}</p>
                         <p className="text-gray-500 text-sm">{order.date}</p>
                       </div>
-
                       <div className="mb-2">
                         {order.items.map((item, index) => (
                           <p key={index} className="text-gray-700 text-sm">
@@ -202,14 +197,11 @@ const Profile = () => {
                           </p>
                         ))}
                       </div>
-
                       <div className="flex justify-between items-center">
                         <p className="text-gray-700 font-medium">{order.total}</p>
                         <p
                           className={`text-sm font-semibold ${
-                            order.status === "Shipped"
-                              ? "text-secondary"
-                              : "text-primary"
+                            order.status === "Shipped" ? "text-secondary" : "text-primary"
                           }`}
                         >
                           {order.status}
@@ -241,9 +233,7 @@ const Profile = () => {
                         className="w-full h-36 object-cover"
                       />
                       <div className="p-3">
-                        <p className="text-sm font-medium text-gray-700 truncate">
-                          {item.name}
-                        </p>
+                        <p className="text-sm font-medium text-gray-700 truncate">{item.name}</p>
                         <p className="text-primary font-semibold">{item.price}</p>
                       </div>
                       <button
@@ -265,7 +255,10 @@ const Profile = () => {
           {activeTab === "settings" && (
             <div className="text-center text-gray-600">
               <h3 className="text-xl font-semibold mb-4">Account Settings</h3>
-              <button className="bg-red-500 text-white px-5 py-2 rounded-lg hover:bg-red-600 transition">
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-5 py-2 rounded-lg hover:bg-red-600 transition"
+              >
                 Logout
               </button>
             </div>

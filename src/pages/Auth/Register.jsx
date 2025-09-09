@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import registerImg from "../../assets/logo.png"; // replace with your image path
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import registerImg from "../../assets/logo.png"; 
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import { registerUser } from "../../features/user/userSlice";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,17 +13,50 @@ const Register = () => {
     confirmPassword: "",
   });
 
-  const [showPassword, setShowPassword] = useState(false); // for password toggle
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // for confirm password toggle
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState([]);
+
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { loading, error } = useSelector((state) => state.user);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // Check password strength in real-time
+  useEffect(() => {
+    const errors = [];
+    if (formData.password.length < 8) errors.push("At least 8 characters");
+    if (!/[A-Z]/.test(formData.password)) errors.push("At least one uppercase letter");
+    if (!/[a-z]/.test(formData.password)) errors.push("At least one lowercase letter");
+    if (!/[0-9]/.test(formData.password)) errors.push("At least one number");
+    if (!/[\W_]/.test(formData.password)) errors.push("At least one special character");
+    setPasswordErrors(errors);
+  }, [formData.password]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Add registration logic here
-    console.log(formData);
+
+    if (passwordErrors.length > 0) {
+      alert("Please fix the password errors before submitting.");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    try {
+      const resultAction = await dispatch(registerUser(formData));
+      if (registerUser.fulfilled.match(resultAction)) {
+        navigate("/"); 
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -32,7 +67,7 @@ const Register = () => {
 
       <div className="flex flex-col lg:flex-row bg-white rounded-3xl overflow-hidden w-full max-w-5xl">
         {/* Left Side - Image */}
-        <div className="lg:w-1/2 flex flex-col items-center ">
+        <div className="lg:w-1/2 flex flex-col items-center">
           <img
             src={registerImg}
             alt="Register"
@@ -71,7 +106,7 @@ const Register = () => {
               className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
 
-            {/* Password Field with Toggle */}
+            {/* Password Field */}
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -90,7 +125,18 @@ const Register = () => {
               </span>
             </div>
 
-            {/* Confirm Password Field with Toggle */}
+            {/* Password Validation Feedback */}
+            {formData.password && (
+              <ul className="text-xs mt-1 mb-2 space-y-1 text-red-500">
+                {passwordErrors.length === 0 ? (
+                  <li className="text-green-500">✅ Strong password</li>
+                ) : (
+                  passwordErrors.map((err, idx) => <li key={idx}>❌ {err}</li>)
+                )}
+              </ul>
+            )}
+
+            {/* Confirm Password Field */}
             <div className="relative">
               <input
                 type={showConfirmPassword ? "text" : "password"}
@@ -109,11 +155,17 @@ const Register = () => {
               </span>
             </div>
 
+            {/* Display server error */}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+
             <button
               type="submit"
-              className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition"
+              disabled={loading}
+              className={`w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              Register
+              {loading ? "Registering..." : "Register"}
             </button>
           </form>
 

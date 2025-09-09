@@ -1,65 +1,17 @@
-import React, { useState } from "react";
-import { FaTrash, FaPlus, FaMinus } from "react-icons/fa";
+import React from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
-import img1 from "../../assets/dress.jpg"; 
-import img2 from "../../assets/jeans.jpg"; 
+import { FaTrash, FaPlus, FaMinus } from "react-icons/fa";
+import {
+  removeFromCart,
+  increaseQuantity,
+  decreaseQuantity,
+} from "../../features/cart/cartSlice";
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Classic White Shirt",
-      price: 29.99,
-      quantity: 2,
-      size: "M",
-      image: img1,
-      sizes: ["S", "M", "L", "XL"],
-    },
-    {
-      id: 2,
-      name: "Denim Jeans",
-      price: 49.99,
-      quantity: 1,
-      size: "L",
-      image: img2,
-      sizes: ["S", "M", "L", "XL"],
-    },
-  ]);
-
-  const increaseQuantity = (id) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-      )
-    );
-  };
-
-  const decreaseQuantity = (id) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        item.id === id && item.quantity > 1
-          ? { ...item, quantity: item.quantity - 1 }
-          : item
-      )
-    );
-  };
-
-  const removeItem = (id) => {
-    setCartItems((items) => items.filter((item) => item.id !== id));
-  };
-
-  const handleSizeChange = (id, newSize) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, size: newSize } : item
-      )
-    );
-  };
-
-  const subtotal = cartItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.cart.items);
+  const totalPrice = useSelector((state) => state.cart.totalPrice);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -81,9 +33,9 @@ const Cart = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-6">
-            {cartItems.map((item) => (
+            {cartItems.map((item, index) => (
               <div
-                key={item.id}
+                key={`${item.id}-${item.size}-${index}`}
                 className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow-md hover:shadow-lg transition p-4"
               >
                 <img
@@ -91,44 +43,37 @@ const Cart = () => {
                   alt={item.name}
                   className="w-28 h-28 rounded-lg object-cover"
                 />
+
                 <div className="flex-1 sm:ml-6 mt-4 sm:mt-0 w-full">
                   <div className="flex justify-between items-start">
                     <div>
                       <h2 className="text-lg font-semibold text-gray-800">
                         {item.name}
                       </h2>
+                      {item.size && (
+                        <p className="text-sm text-gray-500">
+                          Size: <span className="font-medium">{item.size}</span>
+                        </p>
+                      )}
                       <p className="text-gray-500">${item.price.toFixed(2)}</p>
                     </div>
+
                     <button
-                      onClick={() => removeItem(item.id)}
+                      onClick={() =>
+                        dispatch(removeFromCart({ id: item.id, size: item.size }))
+                      }
                       className="text-red-500 hover:text-red-700"
                     >
                       <FaTrash />
                     </button>
                   </div>
 
-                  {/* Size Selection */}
-                  <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="text-gray-500 text-sm">Size:</span>
-                    {item.sizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => handleSizeChange(item.id, size)}
-                        className={`px-3 py-1 border rounded-full text-sm transition ${
-                          item.size === size
-                            ? "bg-primary text-white border-primary"
-                            : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-
                   {/* Quantity Controls */}
                   <div className="flex items-center mt-4">
                     <button
-                      onClick={() => decreaseQuantity(item.id)}
+                      onClick={() =>
+                        dispatch(decreaseQuantity({ id: item.id, size: item.size }))
+                      }
                       className="p-2 rounded-l-lg bg-gray-200 hover:bg-gray-300 transition"
                     >
                       <FaMinus size={12} />
@@ -137,7 +82,9 @@ const Cart = () => {
                       {item.quantity}
                     </span>
                     <button
-                      onClick={() => increaseQuantity(item.id)}
+                      onClick={() =>
+                        dispatch(increaseQuantity({ id: item.id, size: item.size }))
+                      }
                       className="p-2 rounded-r-lg bg-gray-200 hover:bg-gray-300 transition"
                     >
                       <FaPlus size={12} />
@@ -162,7 +109,7 @@ const Cart = () => {
             <div className="space-y-3 text-gray-600">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>${totalPrice.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Shipping</span>
@@ -170,11 +117,11 @@ const Cart = () => {
               </div>
               <div className="flex justify-between">
                 <span>Estimated Tax</span>
-                <span>${(subtotal * 0.1).toFixed(2)}</span>
+                <span>${(totalPrice * 0.1).toFixed(2)}</span>
               </div>
               <div className="border-t pt-4 flex justify-between font-bold text-lg text-gray-900">
                 <span>Total</span>
-                <span>${(subtotal * 1.1).toFixed(2)}</span>
+                <span>${(totalPrice * 1.1).toFixed(2)}</span>
               </div>
             </div>
             <Link
@@ -191,3 +138,4 @@ const Cart = () => {
 };
 
 export default Cart;
+

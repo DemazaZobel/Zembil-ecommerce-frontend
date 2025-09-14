@@ -167,11 +167,11 @@
 // };
 
 // export default DeliveryStaff;
-// src/pages/admin/DeliveryStaff.jsx
+// src/pages/admin/DeliveryStaff.jsx /
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import API from "../../api/axiosConfig";
-import ConfirmDialog from "../../components/common/confirmDialog";
+import ConfirmDialog from "../../components/common/confirmDialog.jsx";
 
 const DeliveryStaff = () => {
   const queryClient = useQueryClient();

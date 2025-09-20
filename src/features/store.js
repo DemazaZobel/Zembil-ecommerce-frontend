@@ -1,8 +1,8 @@
 // src/features/store.js
 import { configureStore } from "@reduxjs/toolkit";
-import adminReducer from "./adminSlice";
-import deliveryReducer from "./deliverySlice";
-import authReducer from "./authSlice";
+import adminReducer from "./admin/adminSlice";
+import deliveryReducer from "./delivery/deliverySlice";
+import authReducer from "./auth/authSlice";
 
 const store = configureStore({
   reducer: {

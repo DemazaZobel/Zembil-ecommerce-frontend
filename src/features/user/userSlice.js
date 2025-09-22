@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { loginUser as loginUserAPI, registerUser as registerUserAPI } from "../../api/authApi";
+import { getUserById } from "../../api/userApi";
 
 // Load initial state from localStorage
 const userFromStorage = localStorage.getItem("user")
@@ -11,6 +12,7 @@ const initialState = {
   token: userFromStorage?.token || null,
   loading: false,
   error: null,
+  fetchedUsers: {}, // cache for users fetched by ID
 };
 
 // Async thunk for login
@@ -19,7 +21,6 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await loginUserAPI(credentials);
-      // Return user object and token
       return { user: response.user, token: response.token };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
@@ -33,10 +34,22 @@ export const registerUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await registerUserAPI(userData);
-      // Return user object and token (role included)
       return { user: response.user, token: response.token };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+// Async thunk to fetch user by ID (for review authors)
+export const fetchUserById = createAsyncThunk(
+  "user/fetchUserById",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const data = await getUserById(userId);
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
@@ -52,6 +65,7 @@ const userSlice = createSlice({
       localStorage.removeItem("user");
     },
   },
+
   extraReducers: (builder) => {
     builder
       // Login
@@ -61,7 +75,7 @@ const userSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.info = action.payload.user; // includes role
+        state.info = action.payload.user;
         state.token = action.payload.token;
         localStorage.setItem("user", JSON.stringify(action.payload));
       })
@@ -69,6 +83,7 @@ const userSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+
       // Registration
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
@@ -76,13 +91,19 @@ const userSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.info = action.payload.user; // includes role
+        state.info = action.payload.user;
         state.token = action.payload.token;
         localStorage.setItem("user", JSON.stringify(action.payload));
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // Fetch user by ID (for reviews)
+      .addCase(fetchUserById.fulfilled, (state, action) => {
+        if (!state.fetchedUsers) state.fetchedUsers = {};
+        state.fetchedUsers[action.payload.id] = action.payload;
       });
   },
 });

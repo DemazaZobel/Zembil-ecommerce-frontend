@@ -1,83 +1,174 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { products } from "../../data/productsData.js";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchProductById,
+  clearCurrentProduct,
+} from "../../features/product/productSlice";
+import { addToCart, fetchCart } from "../../features/cart/cartSlice";
+
+// Components
 import ReviewSection from "../../components/products/ReviewSection.jsx";
 import SimilarProducts from "../../components/products/SimilarProducts.jsx";
 
-const ProductDetail = ({ onAddToCart }) => {
+const ProductDetail = () => {
   const { id } = useParams();
-  const allProducts = Object.values(products).flat();
-  const product = allProducts.find((p) => p.id.toString() === id);
+  const dispatch = useDispatch();
+  const { currentProduct: product, loading, error } = useSelector(
+    (state) => state.products
+  );
 
-  const [mainImage, setMainImage] = useState(product?.image);
-  const [selectedSize, setSelectedSize] = useState(null);
+  const [mainImage, setMainImage] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [popup, setPopup] = useState(null); // <-- popup state
 
-  if (!product) {
-    return <h2 className="text-center py-10">Product not found 😢</h2>;
+  // Fetch product by ID
+  useEffect(() => {
+    dispatch(fetchProductById(id));
+    return () => {
+      dispatch(clearCurrentProduct());
+    };
+  }, [dispatch, id]);
+
+  useEffect(() => {
+    if (product) {
+      const images = Array.isArray(product.images)
+        ? product.images
+        : product.images
+        ? [product.images]
+        : [];
+      setMainImage(images[0] || "");
+      setSelectedSize(product.sizes?.[0]?.sizeId || "");
+    }
+  }, [product]);
+
+  if (loading || !product) {
+    return <p className="text-center py-10">Loading product...</p>;
   }
 
+  if (error) {
+    return <p className="text-center py-10 text-red-500">{error}</p>;
+  }
+
+  const images = Array.isArray(product.images)
+    ? product.images
+    : product.images
+    ? [product.images]
+    : [];
+
+  const handleAddToCart = async () => {
+    if (product.sizes?.length > 0 && !selectedSize) {
+      setPopup("Please select a size before adding to cart."); // notification
+      setTimeout(() => setPopup(null), 2000);
+      return;
+    }
+
+    if (quantity <= 0) {
+      setPopup("Quantity must be at least 1"); // notification
+      setTimeout(() => setPopup(null), 2000);
+      return;
+    }
+
+    const sizeObj = product.sizes?.find((s) => s.sizeId === Number(selectedSize));
+
+    try {
+      await dispatch(
+        addToCart({
+          productId: product.id,
+          sizeId: sizeObj?.sizeId,
+          size: sizeObj?.name,
+          quantity,
+        })
+      ).unwrap();
+
+      // Refresh cart
+      dispatch(fetchCart());
+
+      setPopup(`Added ${product.name} (${sizeObj?.name || "Default"}) to cart 🛒`);
+      setTimeout(() => setPopup(null), 2000);
+    } catch (err) {
+      console.error("Add to cart failed:", err);
+      setPopup("Failed to add to cart. Please try again.");
+      setTimeout(() => setPopup(null), 2000);
+    }
+  };
+
   const similarProducts =
-    products[product.category]?.filter((p) => p.id !== product.id) || [];
+    product.category?.products?.filter((p) => p.id !== product.id) || [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Left: Image gallery */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative">
+      {/* Notification popup */}
+      {popup && (
+        <div className="fixed top-5 right-5 bg-[#3674B5] text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in">
+          {popup}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:p-12">
+        {/* Image gallery */}
         <div>
-          <img
-            src={mainImage}
-            alt={product.name}
-            className="w-full h-96 object-cover rounded-xl shadow-md mb-4"
-          />
-          <div className="grid grid-cols-3 gap-4">
-            {[product.image, ...(product.otherImages || [])].map((img, idx) => (
-              <img
-                key={idx}
-                src={img}
-                alt={`${product.name}-${idx}`}
-                className={`h-20 w-full object-cover rounded-md cursor-pointer border-2 ${
-                  mainImage === img ? "border-primary" : "border-gray-200"
-                }`}
-                onClick={() => setMainImage(img)}
-              />
-            ))}
-          </div>
+          {mainImage && (
+            <img
+              src={`http://localhost:5000/${mainImage}`}
+              alt={product.name}
+              className="w-full h-96 object-cover rounded-xl shadow-md mb-4"
+            />
+          )}
+          {images.length > 0 && (
+            <div className="grid grid-cols-3 gap-4">
+              {images.map((img, idx) => (
+                <img
+                  key={img + idx}
+                  src={`http://localhost:5000/${img}`}
+                  alt={`${product.name}-${idx}`}
+                  className={`h-20 w-full object-cover rounded-md cursor-pointer border-2 ${
+                    mainImage === img ? "border-[#3674B5]" : "border-gray-200"
+                  }`}
+                  onClick={() => setMainImage(img)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Right: Product info */}
+        {/* Product info */}
         <div className="flex flex-col justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">{product.name}</h1>
             <p className="mt-2 text-gray-600">{product.description || "No description available."}</p>
             <p className="mt-2 text-sm text-gray-500">
-              Category: {product.category || "N/A"}
+              Category: {product.category?.name || "N/A"}
             </p>
-            <p className="mt-2 text-xl font-bold text-primary">
-              ${product.price || 0}
-            </p>
+            <p className="mt-2 text-xl font-bold text-[#3674B5]">${product.price || 0}</p>
 
-            {/* Size selection */}
-            <div className="mt-6">
-              <h3 className="font-semibold mb-2">Select Size:</h3>
-              <div className="flex gap-3">
-                {["S", "M", "L", "XL"].map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 border rounded-md ${
-                      selectedSize === size
-                        ? "bg-primary text-white"
-                        : "bg-white text-gray-800 border-gray-300"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+            {/* Size selector */}
+            {product.sizes?.length > 0 && (
+              <div className="mt-6">
+                <label className="block mb-1 font-semibold">Select Size:</label>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((sizeObj) => {
+                    const isSelected = selectedSize === sizeObj.sizeId;
+                    return (
+                      <button
+                        key={sizeObj.sizeId}
+                        onClick={() => setSelectedSize(sizeObj.sizeId)}
+                        className={`px-3 py-1 border rounded-lg text-sm font-medium ${
+                          isSelected
+                            ? "bg-[#3674B5] text-white border-[#3674B5]"
+                            : "bg-white text-gray-700 border-gray-300"
+                        } hover:bg-[#3674B5] hover:text-white transition`}
+                      >
+                        {sizeObj.name} ({sizeObj.stock})
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Quantity selector */}
+            {/* Quantity */}
             <div className="mt-6 flex items-center gap-4">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -94,10 +185,15 @@ const ProductDetail = ({ onAddToCart }) => {
               </button>
             </div>
 
-            {/* Add to cart */}
+            {/* Add to Cart */}
             <button
-              onClick={() => onAddToCart({ ...product, quantity })}
-              className="mt-6 w-full bg-primary text-white px-4 py-3 rounded-md hover:bg-secondary transition-colors"
+              onClick={handleAddToCart}
+              disabled={quantity <= 0} // disable if quantity is 0
+              className={`mt-6 w-full px-4 py-3 rounded-md transition-colors ${
+                quantity <= 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-[#3674B5] text-white hover:bg-blue-700"
+              }`}
             >
               Add to Cart
             </button>
@@ -105,8 +201,8 @@ const ProductDetail = ({ onAddToCart }) => {
         </div>
       </div>
 
-      {/* Reviews section */}
-      <ReviewSection initialReviews={product.reviews || []} />
+      {/* Reviews */}
+      <ReviewSection productId={product.id} />
 
       {/* Similar products */}
       <SimilarProducts products={similarProducts} />

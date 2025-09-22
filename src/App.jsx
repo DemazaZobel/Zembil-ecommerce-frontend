@@ -1,5 +1,8 @@
 import React from "react";
+import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchCart } from "./features/cart/cartSlice";
 
 import Navbar from "./components/common/Navbar.jsx";
 import Footer from "./components/common/Footer.jsx";
@@ -20,10 +23,20 @@ import AdminUsers from "./pages/Admin/User.jsx";
 import AdminDeliveryStaff from "./pages/Admin/DeliveryStaff.jsx";
 import AdminSize from "./pages/Admin/Size.jsx";
 import AdminDeliveryZone from "./pages/Admin/DeliveryZone.jsx";
+import AboutUs from "./pages/About/Aboutus.jsx";
+import ContactUs from "./pages/Contact/Contactus.jsx";
 
 // Wrapper component to access location
 const AppWrapper = () => {
   const location = useLocation();
+  const dispatch = useDispatch();
+  const { info } = useSelector((state) => state.user);
+
+  useEffect(() => {
+    // Fetch cart whenever user info changes
+    dispatch(fetchCart());
+  }, [info, dispatch]);
+
 
   // Pages where Navbar and Footer should be hidden
   const hideNavFooter = ["/login", "/register"].includes(location.pathname);
@@ -57,6 +70,8 @@ const AppWrapper = () => {
           <Route path="/admin/deliverystaff" element={<AdminDeliveryStaff />} />
           <Route path="/admin/size" element={<AdminSize />} />
           <Route path="/admin/deliveryzone" element={<AdminDeliveryZone />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/contact" element={<ContactUs />} />
         </Routes>
       </main>
 

@@ -1,34 +1,51 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+// src/pages/checkout/Checkout.jsx
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import OrderPopup from "../../components/order/OrderPopup";
-
-
+import { fetchCart } from "../../features/cart/cartSlice";
+import { getShippingAddresses, addShippingAddress } from "../../features/shipping/shipmentSlice";
+import { fetchZones } from "../../features/delivery/deliverySlice";
 
 const Checkout = () => {
+  const dispatch = useDispatch();
+
+  // Redux state
+  const { items: cartItems } = useSelector((state) => state.cart);
+  const { addresses: shippingAddresses, loading: shippingLoading } = useSelector(
+    (state) => state.shipping
+  );
+  const { info: user } = useSelector((state) => state.user);
+  const { zones } = useSelector((state) => state.delivery);
+
+  // Billing form
   const [billing, setBilling] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    address: "",
+    fullName: user?.name || "",
+    houseNumber: "",
+    street: "",
+    area: "",
+    specificTown: "",
     city: "",
-    state: "",
-    zip: "",
-    country: "",
+    country: "Ethiopia",
+    postalCode: "",
+    phoneNumber: user?.phone || "",
+    zoneId: "",
   });
 
+  const [selectedAddress, setSelectedAddress] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("creditCard");
   const [popupVisible, setPopupVisible] = useState(false);
- const [orderNumber, setOrderNumber] = useState("12345ABC");
+  const [orderNumber, setOrderNumber] = useState("12345ABC");
+
+  // Load cart, shipping addresses & zones
+  useEffect(() => {
+    dispatch(fetchCart());
+    dispatch(getShippingAddresses());
+    dispatch(fetchZones());
+  }, [dispatch]);
 
   const handleChange = (e) => {
     setBilling({ ...billing, [e.target.name]: e.target.value });
   };
-
-  // Example cart summary (replace with real cart data)
-  const cartItems = [
-    { id: 1, name: "Classic White Shirt", price: 29.99, quantity: 2 },
-    { id: 2, name: "Denim Jeans", price: 49.99, quantity: 1 },
-  ];
 
   const subtotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -42,12 +59,57 @@ const Checkout = () => {
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {/* Billing Details */}
+        {/* Shipping & Payment */}
         <div className="bg-white shadow-lg rounded-xl p-6">
           <h2 className="text-2xl font-semibold mb-6 text-gray-900">
-            Billing Details
+            Shipping & Billing Details
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {/* Saved Addresses */}
+          {shippingLoading ? (
+            <p>Loading addresses...</p>
+          ) : (
+            <div className="space-y-3 mb-6">
+              {shippingAddresses.length === 0 && <p>No saved addresses.</p>}
+              {shippingAddresses.map((addr) => (
+                <div key={addr.id}>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="shippingAddress"
+                      value={addr.id}
+                      checked={selectedAddress?.id === addr.id}
+                      onChange={() => {
+                        setSelectedAddress(addr);
+                        setBilling({
+                          ...billing,
+                          fullName: addr.fullName,
+                          houseNumber: addr.houseNumber || "",
+                          street: addr.street,
+                          area: addr.area,
+                          specificTown: addr.specificTown || "",
+                          city: addr.city,
+                          country: "Ethiopia",
+                          postalCode: addr.postalCode || "",
+                          phoneNumber: addr.phoneNumber,
+                          zoneId: addr.zoneId || "",
+                        });
+                      }}
+                      className="accent-primary"
+                    />
+                    <span>
+                      {addr.fullName}, {addr.houseNumber && `House ${addr.houseNumber},`}{" "}
+                      {addr.street}, {addr.area}, {addr.specificTown && `${addr.specificTown},`}{" "}
+                      {addr.city}, Ethiopia
+                    </span>
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Billing Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <input
               type="text"
               name="fullName"
@@ -57,28 +119,36 @@ const Checkout = () => {
               className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
             />
             <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={billing.email}
+              type="text"
+              name="houseNumber"
+              placeholder="House Number"
+              value={billing.houseNumber}
               onChange={handleChange}
               className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
             />
             <input
               type="text"
-              name="phone"
-              placeholder="Phone"
-              value={billing.phone}
+              name="street"
+              placeholder="Street"
+              value={billing.street}
               onChange={handleChange}
               className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
             />
             <input
               type="text"
-              name="address"
-              placeholder="Address"
-              value={billing.address}
+              name="area"
+              placeholder="Area"
+              value={billing.area}
               onChange={handleChange}
-              className="border px-4 py-3 rounded-lg w-full sm:col-span-2 focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
+            />
+            <input
+              type="text"
+              name="specificTown"
+              placeholder="Specific Town"
+              value={billing.specificTown}
+              onChange={handleChange}
+              className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
             />
             <input
               type="text"
@@ -90,28 +160,75 @@ const Checkout = () => {
             />
             <input
               type="text"
-              name="state"
-              placeholder="State"
-              value={billing.state}
-              onChange={handleChange}
-              className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
-            />
-            <input
-              type="text"
-              name="zip"
-              placeholder="ZIP"
-              value={billing.zip}
-              onChange={handleChange}
-              className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
-            />
-            <input
-              type="text"
               name="country"
               placeholder="Country"
               value={billing.country}
+              readOnly
+              className="border px-4 py-3 rounded-lg w-full bg-gray-100 cursor-not-allowed"
+            />
+            <input
+              type="text"
+              name="postalCode"
+              placeholder="Postal Code"
+              value={billing.postalCode}
               onChange={handleChange}
               className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
             />
+            <input
+              type="text"
+              name="phoneNumber"
+              placeholder="Phone Number"
+              value={billing.phoneNumber}
+              onChange={handleChange}
+              className="border px-4 py-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-primary transition"
+            />
+          </div>
+
+          {/* Delivery Zone */}
+          <div className="mb-4">
+            <select
+              value={billing.zoneId}
+              onChange={(e) =>
+                setBilling({ ...billing, zoneId: e.target.value })
+              }
+              className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select Zone/Area</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name} {z.areas ? `(${z.areas})` : ""}
+                </option>
+              ))}
+            </select>
+            {!billing.zoneId && (
+              <p className="text-sm text-gray-600 mt-1">
+                If your location isn’t listed, choose the nearest/closest location for pickup or provide postal code.
+              </p>
+            )}
+          </div>
+
+          {/* Save Address */}
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                if (!billing.fullName || !billing.street || !billing.city) {
+                  alert("Please fill Full Name, Street, and City to save address.");
+                  return;
+                }
+                dispatch(
+                  addShippingAddress({
+                    ...billing,
+                    userId: user?.id, // Add the currently logged-in user ID
+                  })
+                );
+
+                alert("Address saved successfully!");
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            >
+              Save Address
+            </button>
           </div>
 
           {/* Payment Method */}
@@ -165,10 +282,12 @@ const Checkout = () => {
           <div className="space-y-4">
             {cartItems.map((item) => (
               <div
-                key={item.id}
+                key={item.cartItemId}
                 className="flex justify-between items-center border-b pb-2"
               >
-                <span className="text-gray-700">{item.name} x{item.quantity}</span>
+                <span className="text-gray-700">
+                  {item.name} x{item.quantity}
+                </span>
                 <span className="font-medium text-gray-900">
                   ${(item.price * item.quantity).toFixed(2)}
                 </span>
@@ -193,18 +312,22 @@ const Checkout = () => {
             </div>
 
             <button
-            onClick={() => setPopupVisible(true)}
-            className="mt-6 block w-full text-center bg-primary text-white py-3 rounded-lg font-medium shadow hover:bg-primary/90 transition"
-          >
-            Place Order
-          </button>
-          <OrderPopup
-            visible={popupVisible}
-            onClose={() => setPopupVisible(false)}
-            orderNumber={orderNumber}
-          />
+              onClick={() => setPopupVisible(true)}
+              disabled={!billing.fullName || cartItems.length === 0}
+              className={`mt-6 block w-full text-center py-3 rounded-lg font-medium shadow transition ${
+                !billing.fullName || cartItems.length === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-primary text-white hover:bg-primary/90"
+              }`}
+            >
+              Place Order
+            </button>
 
-
+            <OrderPopup
+              visible={popupVisible}
+              onClose={() => setPopupVisible(false)}
+              orderNumber={orderNumber}
+            />
           </div>
         </div>
       </div>

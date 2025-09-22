@@ -1,14 +1,26 @@
-// src/components/products/ProductForm.jsx
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createProduct, updateProduct, fetchProductById } from "../../features/product/productSlice";
+import {
+  createProduct,
+  updateProduct,
+  fetchProductById,
+  fetchProducts,
+} from "../../features/product/productSlice";
 import { fetchCategories } from "../../features/category/categorySlice";
 import { useQuery } from "@tanstack/react-query";
 import API from "../../api/axiosConfig";
 
+import ProductBasicInfo from "./ProductBasicInfo";
+import ProductCategoryType from "./ProductCategoryType";
+import ProductImages from "./ProductImages";
+import ProductTags from "./ProductTags";
+import ProductSizes from "./ProductSizes";
+import ProductSaleOptions from "./ProductSaleOptions";
+import MessageBox from "../common/MessageBox";
+
 const ProductForm = ({ productId = null, onSuccess }) => {
   const dispatch = useDispatch();
-  const { currentProduct, loading } = useSelector((state) => state.products);
+  const { currentProduct, loading, products } = useSelector((state) => state.products);
   const { categories } = useSelector((state) => state.categories);
 
   const [formData, setFormData] = useState({
@@ -18,7 +30,7 @@ const ProductForm = ({ productId = null, onSuccess }) => {
     categoryId: "",
     type: "",
     tags: [],
-    sizes: [], // array of {sizeId, stock}
+    sizes: [],
     onSale: false,
     saleType: "",
     saleValue: "",
@@ -27,71 +39,103 @@ const ProductForm = ({ productId = null, onSuccess }) => {
   });
 
   const [imageFiles, setImageFiles] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [imagesToDelete, setImagesToDelete] = useState([]);
   const [availableSizes, setAvailableSizes] = useState([]);
+  const [message, setMessage] = useState(null);
+  const [messageType, setMessageType] = useState("success");
 
-  // Fetch all sizes from API
+  // Fetch sizes
   const { data: sizesData = [] } = useQuery({
     queryKey: ["sizes"],
-    queryFn: async () => {
-      const res = await API.get("/sizes");
-      return res.data;
-    },
+    queryFn: async () => (await API.get("/sizes")).data,
   });
 
+  // Load categories and products
   useEffect(() => {
     dispatch(fetchCategories());
+    dispatch(fetchProducts());
   }, [dispatch]);
 
+  // Load product for edit
   useEffect(() => {
     if (productId) dispatch(fetchProductById(productId));
   }, [dispatch, productId]);
 
-  // Load product data
+  // Populate formData when editing
   useEffect(() => {
     if (currentProduct && productId) {
       setFormData({
-        ...currentProduct,
+        name: currentProduct.name || "",
+        description: currentProduct.description || "",
+        price: currentProduct.price || "",
+        categoryId: currentProduct.categoryId || "",
+        type: currentProduct.category?.type || "",
         tags: currentProduct.tags || [],
-        sizes: currentProduct.sizes || [],
-        saleStart: currentProduct.saleStart ? currentProduct.saleStart.slice(0, 16) : "",
-        saleEnd: currentProduct.saleEnd ? currentProduct.saleEnd.slice(0, 16) : "",
+        sizes: currentProduct.productSizes
+          ? currentProduct.productSizes.map((ps) => ({
+              sizeId: ps.sizeId,
+              stock: ps.stock,
+            }))
+          : [],
+        onSale: currentProduct.onSale || false,
+        saleType: currentProduct.saleType || "",
+        saleValue: currentProduct.saleValue || "",
+        saleStart: currentProduct.saleStart
+          ? currentProduct.saleStart.slice(0, 16)
+          : "",
+        saleEnd: currentProduct.saleEnd
+          ? currentProduct.saleEnd.slice(0, 16)
+          : "",
       });
 
-      if (currentProduct.images) setImagePreviews(currentProduct.images);
+      if (currentProduct.images) {
+        setExistingImages(
+          currentProduct.images.map((img) =>
+            img.startsWith("http") ? img : `http://localhost:5000/${img}`
+          )
+        );
+      }
     }
   }, [currentProduct, productId]);
 
-  // Prepare size options
+  // Set available sizes
   useEffect(() => {
     if (sizesData) setAvailableSizes(sizesData);
   }, [sizesData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
 
-    if (name === "categoryId") setFormData((prev) => ({ ...prev, type: "" }));
+    if (name === "categoryType") {
+      const [categoryId, categoryType] = value.split("|");
+      setFormData((prev) => ({
+        ...prev,
+        categoryId,
+        type: categoryType,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
   };
 
   const handleArrayChange = (name, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value.split(",").map((item) => item.trim()),
-    }));
+    if (Array.isArray(value)) {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value
+          .split(",")
+          .map((i) => i.trim())
+          .filter((i) => i.length > 0),
+      }));
+    }
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setImageFiles(files);
-    const previews = files.map((file) => URL.createObjectURL(file));
-    setImagePreviews(previews);
-  };
-
-  // Handle stock change for each size
   const handleSizeStockChange = (sizeId, stock) => {
     setFormData((prev) => {
       const exists = prev.sizes.find((s) => s.sizeId === sizeId);
@@ -103,216 +147,168 @@ const ProductForm = ({ productId = null, onSuccess }) => {
           ),
         };
       } else {
-        return {
-          ...prev,
-          sizes: [...prev.sizes, { sizeId, stock: parseInt(stock) || 0 }],
-        };
+        return { ...prev, sizes: [...prev.sizes, { sizeId, stock: parseInt(stock) || 0 }] };
       }
     });
   };
 
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setImageFiles(files);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!productId) {
+      const duplicate = products.find(
+        (p) =>
+          p.name.toLowerCase().trim() === formData.name.toLowerCase().trim() &&
+          p.categoryId === parseInt(formData.categoryId)
+      );
+      if (duplicate) {
+        setMessage("⚠️ A product with this name and category already exists!");
+        setMessageType("error");
+        return;
+      }
+    }
+
     try {
       const data = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          data.append(key, JSON.stringify(value));
-        } else {
-          data.append(key, value);
+
+      data.append("name", formData.name.trim());
+      data.append("description", formData.description.trim());
+      data.append("price", formData.price);
+      data.append("categoryId", formData.categoryId);
+      data.append("type", formData.type);
+
+      data.append("tags", JSON.stringify(formData.tags || []));
+      data.append("sizes", JSON.stringify(formData.sizes || []));
+      data.append("onSale", formData.onSale ? "true" : "false");
+
+      if (formData.onSale) {
+        data.append("saleType", formData.saleType || "");
+        data.append("saleValue", formData.saleValue || "");
+
+        if (formData.saleStart) {
+          const startDate = new Date(formData.saleStart);
+          if (!isNaN(startDate)) data.append("saleStart", startDate.toISOString());
         }
-      });
+        if (formData.saleEnd) {
+          const endDate = new Date(formData.saleEnd);
+          if (!isNaN(endDate)) data.append("saleEnd", endDate.toISOString());
+        }
+      }
+
       imageFiles.forEach((file) => data.append("images", file));
+      if (productId && imagesToDelete.length > 0) {
+        data.append("imagesToDelete", JSON.stringify(imagesToDelete));
+      }
 
       if (productId) {
-        await dispatch(updateProduct({ id: productId, productData: data })).unwrap();
+        await dispatch(updateProduct({ id: productId, formData: data })).unwrap();
+        setMessage("✅ Product updated successfully!");
       } else {
         await dispatch(createProduct(data)).unwrap();
+        setMessage("✅ Product created successfully!");
       }
-      console.log("Product saved successfully", formData);
-      if (onSuccess) onSuccess();
+
+      setMessageType("success");
+      setTimeout(() => onSuccess && onSuccess(), 1000);
     } catch (err) {
       console.error(err);
+      setMessage("❌ Something went wrong. Please try again.");
+      setMessageType("error");
     }
   };
 
-  const selectedCategory = categories.find((c) => c.id === parseInt(formData.categoryId));
-  const types = selectedCategory ? [selectedCategory.type || "Default"] : [];
-
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white shadow-lg rounded-xl p-6 max-w-3xl mx-auto space-y-6"
-      encType="multipart/form-data"
-    >
-      <h2 className="text-2xl font-bold mb-4 text-gray-700">
-        {productId ? "Edit Product" : "Create Product"}
-      </h2>
-
-      {/* Name & Price */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input
-          type="text"
-          name="name"
-          placeholder="Product Name"
-          value={formData.name}
-          onChange={handleChange}
-          className="border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-          required
+    <>
+      {message && (
+        <MessageBox
+          message={message}
+          type={messageType}
+          onClose={() => setMessage(null)}
         />
-        <input
-          type="number"
-          step="0.01"
-          name="price"
-          placeholder="Price"
-          value={formData.price}
-          onChange={handleChange}
-          className="border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-          required
-        />
-      </div>
-
-      <textarea
-        name="description"
-        placeholder="Description"
-        value={formData.description}
-        onChange={handleChange}
-        className="border rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-400"
-      />
-
-      {/* Category & Type */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <select
-          name="categoryId"
-          value={formData.categoryId}
-          onChange={handleChange}
-          className="border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-          required
-        >
-          <option value="">Select Category</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          name="type"
-          value={formData.type}
-          onChange={handleChange}
-          className="border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-          required
-          disabled={!selectedCategory}
-        >
-          <option value="">Select Type</option>
-          {types.map((t, idx) => (
-            <option key={idx} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Image Upload */}
-      <div>
-        <label className="block mb-2 font-medium">Upload Images</label>
-        <input type="file" multiple accept="image/*" onChange={handleImageChange} className="mb-3" />
-        <div className="flex flex-wrap gap-4">
-          {imagePreviews.map((src, idx) => (
-            <div key={idx} className="w-24 h-24 border rounded-lg overflow-hidden relative">
-              <img src={src} alt={`preview-${idx}`} className="w-full h-full object-cover" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tags */}
-      <input
-        type="text"
-        name="tags"
-        placeholder="Tags (comma-separated)"
-        value={formData.tags.join(", ")}
-        onChange={(e) => handleArrayChange("tags", e.target.value)}
-        className="border rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-400"
-      />
-
-      {/* Sizes with stock */}
-      <div className="space-y-2">
-        <label className="font-medium">Sizes & Stock</label>
-        {availableSizes.map((s) => {
-          const existing = formData.sizes.find((sz) => sz.sizeId === s.id);
-          return (
-            <div key={s.id} className="flex items-center gap-4">
-              <span className="w-32">{s.name}</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="Stock"
-                value={existing ? existing.stock : ""}
-                onChange={(e) => handleSizeStockChange(s.id, e.target.value)}
-                className="border rounded-lg p-2 w-24 focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Sale Options */}
-      <div className="flex items-center gap-2">
-        <input type="checkbox" name="onSale" checked={formData.onSale} onChange={handleChange} />
-        <span className="font-medium">On Sale?</span>
-      </div>
-      {formData.onSale && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="text"
-            name="saleType"
-            placeholder="Sale Type (percent/flat)"
-            value={formData.saleType}
-            onChange={handleChange}
-            className="border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-          />
-          <input
-            type="number"
-            step="0.01"
-            name="saleValue"
-            placeholder="Sale Value"
-            value={formData.saleValue}
-            onChange={handleChange}
-            className="border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-          />
-          <div>
-            <label className="block mb-1">Sale Start</label>
-            <input
-              type="datetime-local"
-              name="saleStart"
-              value={formData.saleStart}
-              onChange={handleChange}
-              className="border rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-          <div>
-            <label className="block mb-1">Sale End</label>
-            <input
-              type="datetime-local"
-              name="saleEnd"
-              value={formData.saleEnd}
-              onChange={handleChange}
-              className="border rounded-lg p-3 w-full focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-        </div>
       )}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-primary text-white py-3 px-6 rounded-lg hover:bg-blue-600 disabled:opacity-50 mt-4"
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white shadow-xl rounded-2xl w-full max-w-4xl mx-auto p-6 sm:p-8 space-y-8 border border-gray-100 overflow-y-auto max-h-[90vh]"
+        encType="multipart/form-data"
       >
-        {loading ? "Saving..." : productId ? "Update Product" : "Create Product"}
-      </button>
-    </form>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800 text-center">
+          {productId ? "Edit Product" : "Create Product"}
+        </h2>
+
+        <div className="space-y-6">
+          <section className="border-b pb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+              Basic Information
+            </h3>
+            <ProductBasicInfo formData={formData} handleChange={handleChange} />
+          </section>
+
+          <section className="border-b pb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+              Category & Type
+            </h3>
+            <ProductCategoryType
+              formData={formData}
+              handleChange={handleChange}
+              categories={categories}
+            />
+          </section>
+
+          <section className="border-b pb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+              Product Images
+            </h3>
+            <ProductImages
+              imageFiles={imageFiles}
+              setImageFiles={setImageFiles}
+              handleImageChange={handleImageChange}
+              existingImages={existingImages}
+              setExistingImages={setExistingImages}
+              imagesToDelete={imagesToDelete}
+              setImagesToDelete={setImagesToDelete}
+            />
+          </section>
+
+          <section className="border-b pb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Tags</h3>
+            <ProductTags formData={formData} handleArrayChange={handleArrayChange} />
+          </section>
+
+          <section className="border-b pb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Sizes & Stock</h3>
+            <ProductSizes
+              formData={formData}
+              availableSizes={availableSizes}
+              handleSizeStockChange={handleSizeStockChange}
+            />
+          </section>
+
+          <section>
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Sale Options</h3>
+            <ProductSaleOptions formData={formData} handleChange={handleChange} />
+          </section>
+        </div>
+
+        <div className="pt-6 flex justify-center">
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 text-white py-3 px-8 rounded-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {loading
+              ? "Saving..."
+              : productId
+              ? "Update Product"
+              : "Create Product"}
+          </button>
+        </div>
+      </form>
+    </>
   );
 };
 

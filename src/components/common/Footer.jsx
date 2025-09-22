@@ -3,7 +3,7 @@ import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn } from "react-icons/f
 
 export default function Footer() {
   return (
-    <footer className="bg-[#2E5F92] text-gray-300 py-10">
+    <footer className="bg-[#2E5F92] text-gray-300 py-10 w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-8 md:space-y-0">
           {/* Logo / Company */}
@@ -28,13 +28,11 @@ export default function Footer() {
                 <li>
                   <a href="/kids" className="hover:text-white transition">Kids</a>
                 </li>
-                <li>
-                  <a href="/sale" className="hover:text-white transition">Sale</a>
-                </li>
+                
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-3">Company</h4>
+              <h4 className="text-white font-semibold mb-3">Zembil</h4>
               <ul className="space-y-2">
                 <li>
                   <a href="/about" className="hover:text-white transition">About Us</a>
@@ -42,12 +40,7 @@ export default function Footer() {
                 <li>
                   <a href="/contact" className="hover:text-white transition">Contact</a>
                 </li>
-                <li>
-                  <a href="/faq" className="hover:text-white transition">FAQ</a>
-                </li>
-                <li>
-                  <a href="/privacy" className="hover:text-white transition">Privacy Policy</a>
-                </li>
+               
               </ul>
             </div>
           </div>

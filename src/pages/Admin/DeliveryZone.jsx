@@ -1,48 +1,33 @@
-import React, { useState } from "react";
-import API from "../../api/axiosConfig";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// src/pages/delivery/DeliveryZones.jsx
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchZones, addZone, updateZone, deleteZone } from "../../features/delivery/deliverySlice";
 
 const DeliveryZones = () => {
-  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const { zones, loading, error } = useSelector((state) => state.delivery);
 
-  // Zone state
   const [zoneName, setZoneName] = useState("");
-  const [zoneAreas, setZoneAreas] = useState(""); // e.g., "Bole, Megenagna, 4 Kilo"
+  const [zoneAreas, setZoneAreas] = useState("");
   const [editingZone, setEditingZone] = useState(null);
 
-  // Fetch zones
-  const { data: zones = [], isLoading } = useQuery({
-    queryKey: ["deliveryZones"],
-    queryFn: async () => {
-      const res = await API.get("/deliveryzones"); // should return { id, name, areas }
-      return res.data;
-    },
-  });
+  useEffect(() => {
+    dispatch(fetchZones());
+  }, [dispatch]);
 
-  // Add/Edit zone mutation
-  const saveZoneMutation = useMutation({
-    mutationFn: async (zone) => {
-      if (editingZone) return await API.put(`/deliveryzones/${editingZone.id}`, zone);
-      return await API.post("/deliveryzones", zone);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(["deliveryZones"]);
-      setZoneName("");
-      setZoneAreas("");
-      setEditingZone(null);
-    },
-  });
-
-  // Delete zone mutation
-  const deleteZoneMutation = useMutation({
-    mutationFn: async (id) => await API.delete(`/deliveryzones/${id}`),
-    onSuccess: () => queryClient.invalidateQueries(["deliveryZones"]),
-  });
-
-  // Handlers
   const handleSaveZone = () => {
     if (!zoneName.trim()) return alert("Zone name is required");
-    saveZoneMutation.mutate({ name: zoneName, areas: zoneAreas });
+    const payload = { name: zoneName, areas: zoneAreas };
+
+    if (editingZone) {
+      dispatch(updateZone({ id: editingZone.id, payload }));
+    } else {
+      dispatch(addZone(payload));
+    }
+
+    setZoneName("");
+    setZoneAreas("");
+    setEditingZone(null);
   };
 
   const handleEditZone = (zone) => {
@@ -58,8 +43,11 @@ const DeliveryZones = () => {
   };
 
   const handleDeleteZone = (id) => {
-    if (window.confirm("Delete this zone?")) deleteZoneMutation.mutate(id);
+    if (window.confirm("Delete this zone?")) dispatch(deleteZone(id));
   };
+
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -98,54 +86,50 @@ const DeliveryZones = () => {
       </div>
 
       {/* Zones Table */}
-      {isLoading ? (
-        <div className="text-center">Loading...</div>
-      ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow-md">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Areas</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+      <div className="overflow-x-auto bg-white rounded-lg shadow-md">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Areas</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {zones.map((zone) => (
+              <tr key={zone.id} className="hover:bg-gray-50 transition">
+                <td className="px-6 py-4 whitespace-nowrap">{zone.id}</td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium">{zone.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  {zone.areas || "No areas added"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap flex justify-center gap-2">
+                  <button
+                    onClick={() => handleEditZone(zone)}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded shadow-sm transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteZone(zone.id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded shadow-sm transition"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {zones.map((zone) => (
-                <tr key={zone.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 whitespace-nowrap">{zone.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">{zone.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                    {zone.areas ? zone.areas : "No areas added"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap flex justify-center gap-2">
-                    <button
-                      onClick={() => handleEditZone(zone)}
-                      className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded shadow-sm transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteZone(zone.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded shadow-sm transition"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {zones.length === 0 && (
-                <tr>
-                  <td colSpan="4" className="text-center p-4 text-gray-500">
-                    No zones found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+            {zones.length === 0 && (
+              <tr>
+                <td colSpan="4" className="text-center p-4 text-gray-500">
+                  No zones found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

@@ -31,9 +31,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="mt-16 text-center text-gray-700 italic">
-        🚀 Manage your restaurant, orders, users, and delivery efficiently!
-      </div>
+      
     </div>
   );
 };

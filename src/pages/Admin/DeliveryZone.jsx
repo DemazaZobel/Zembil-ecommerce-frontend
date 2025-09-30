@@ -1,7 +1,11 @@
-// src/pages/delivery/DeliveryZones.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchZones, addZone, updateZone, deleteZone } from "../../features/delivery/deliverySlice";
+import {
+  fetchZones,
+  addZone,
+  updateZone,
+  deleteZone,
+} from "../../features/delivery/deliverySlice";
 
 const DeliveryZones = () => {
   const dispatch = useDispatch();
@@ -11,23 +15,43 @@ const DeliveryZones = () => {
   const [zoneAreas, setZoneAreas] = useState("");
   const [editingZone, setEditingZone] = useState(null);
 
+  const [notification, setNotification] = useState(null); // for feedback messages
+
   useEffect(() => {
     dispatch(fetchZones());
   }, [dispatch]);
 
-  const handleSaveZone = () => {
-    if (!zoneName.trim()) return alert("Zone name is required");
-    const payload = { name: zoneName, areas: zoneAreas };
+  const showNotification = (msg, type = "success") => {
+    setNotification({ msg, type });
+    setTimeout(() => setNotification(null), 3000); // hide after 3s
+  };
 
-    if (editingZone) {
-      dispatch(updateZone({ id: editingZone.id, payload }));
-    } else {
-      dispatch(addZone(payload));
+  const handleSaveZone = async () => {
+    if (!zoneName.trim()) {
+      showNotification("Zone name is required", "error");
+      return;
     }
 
-    setZoneName("");
-    setZoneAreas("");
-    setEditingZone(null);
+    const payload = { name: zoneName, areas: zoneAreas };
+
+    try {
+      if (editingZone) {
+        await dispatch(updateZone({ id: editingZone.id, payload })).unwrap();
+        showNotification("Zone updated successfully");
+      } else {
+        await dispatch(addZone(payload)).unwrap();
+        showNotification("Zone added successfully");
+      }
+
+      // refresh data
+      dispatch(fetchZones());
+
+      setZoneName("");
+      setZoneAreas("");
+      setEditingZone(null);
+    } catch (err) {
+      showNotification(err || "Failed to save zone", "error");
+    }
   };
 
   const handleEditZone = (zone) => {
@@ -42,8 +66,14 @@ const DeliveryZones = () => {
     setZoneAreas("");
   };
 
-  const handleDeleteZone = (id) => {
-    if (window.confirm("Delete this zone?")) dispatch(deleteZone(id));
+  const handleDeleteZone = async (id) => {
+    try {
+      await dispatch(deleteZone(id)).unwrap();
+      showNotification("Zone deleted successfully");
+      dispatch(fetchZones()); // refresh after delete
+    } catch (err) {
+      showNotification(err || "Failed to delete zone", "error");
+    }
   };
 
   if (loading) return <div className="p-4">Loading...</div>;
@@ -54,6 +84,17 @@ const DeliveryZones = () => {
       <h1 className="text-4xl font-bold mb-8 text-gray-800 text-center">
         Manage Delivery Zones
       </h1>
+
+      {/* Notification */}
+      {notification && (
+        <div
+          className={`mb-4 px-4 py-2 rounded text-white text-center ${
+            notification.type === "error" ? "bg-red-500" : "bg-green-600"
+          }`}
+        >
+          {notification.msg}
+        </div>
+      )}
 
       {/* Add/Edit Zone */}
       <div className="mb-6 flex flex-wrap gap-3 items-center justify-center bg-white p-4 rounded-lg shadow-md">
@@ -90,17 +131,27 @@ const DeliveryZones = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zone Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Areas</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Zone Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Areas
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {zones.map((zone) => (
               <tr key={zone.id} className="hover:bg-gray-50 transition">
                 <td className="px-6 py-4 whitespace-nowrap">{zone.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium">{zone.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium">
+                  {zone.name}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                   {zone.areas || "No areas added"}
                 </td>
@@ -122,7 +173,10 @@ const DeliveryZones = () => {
             ))}
             {zones.length === 0 && (
               <tr>
-                <td colSpan="4" className="text-center p-4 text-gray-500">
+                <td
+                  colSpan="4"
+                  className="text-center p-4 text-gray-500 italic"
+                >
                   No zones found
                 </td>
               </tr>

@@ -6,6 +6,7 @@ import categoryReducer from "./category/categorySlice";
 import shipmentReducer from "./shipping/shipmentSlice";
 import deliveryReducer from "./delivery/deliverySlice";
 import reviewReducer from "./Review/reviewSlice";
+import orderReducer from "./order/orderSlice"; // ✅ import order reducer
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     shipping: shipmentReducer,
     delivery: deliveryReducer,
     review: reviewReducer,
+    order: orderReducer, // ✅ add order reducer
 
   },
 });

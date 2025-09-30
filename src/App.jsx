@@ -25,6 +25,9 @@ import AdminSize from "./pages/Admin/Size.jsx";
 import AdminDeliveryZone from "./pages/Admin/DeliveryZone.jsx";
 import AboutUs from "./pages/About/Aboutus.jsx";
 import ContactUs from "./pages/Contact/Contactus.jsx";
+import StaffLogin from "./pages/staff/StaffLogin";
+import StaffDashboard from "./pages/staff/StaffDashboard";
+import DeliveryDashboardRoute from "./pages/staff/DeliveryDashboardRoute.jsx";
 
 // Wrapper component to access location
 const AppWrapper = () => {
@@ -39,7 +42,7 @@ const AppWrapper = () => {
 
 
   // Pages where Navbar and Footer should be hidden
-  const hideNavFooter = ["/login", "/register"].includes(location.pathname);
+  const hideNavFooter = ["/login", "/register", "/staff", "/staff/dashboard"].includes(location.pathname);
 
   return (
     <>
@@ -72,6 +75,15 @@ const AppWrapper = () => {
           <Route path="/admin/deliveryzone" element={<AdminDeliveryZone />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/contact" element={<ContactUs />} />
+          <Route path="/staff" element={<StaffLogin />} />
+          <Route
+            path="/staff/dashboard"
+            element={
+              <DeliveryDashboardRoute>
+                <StaffDashboard />
+              </DeliveryDashboardRoute>
+            }
+          />
         </Routes>
       </main>
 

@@ -10,7 +10,6 @@ import {
 } from "../../features/delivery/deliverySlice";
 import { FaEdit, FaTrash } from "react-icons/fa";
 
-
 const DeliveryStaff = () => {
   const dispatch = useDispatch();
   const { staff = [], zones = [], loading, error } = useSelector(
@@ -20,99 +19,105 @@ const DeliveryStaff = () => {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     zoneId: "",
   });
   const [editingId, setEditingId] = useState(null);
-  const [formError, setFormError] = useState("");
+  const [alert, setAlert] = useState({ type: "", message: "" });
+  const [loadingAction, setLoadingAction] = useState(false);
 
+  // Fetch staff and zones initially
   useEffect(() => {
     dispatch(fetchStaff());
     dispatch(fetchZones());
   }, [dispatch]);
 
-  const validatePassword = (password) => {
-    if (password.length < 6) return "Password must be at least 6 characters long";
-    if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter";
-    if (!/[a-z]/.test(password)) return "Password must contain at least one lowercase letter";
-    if (!/[0-9]/.test(password)) return "Password must contain at least one number";
-    return null;
+  // Auto-dismiss alert after 3 seconds
+  useEffect(() => {
+    if (alert.message) {
+      const timer = setTimeout(() => setAlert({ type: "", message: "" }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
+
+  // Handle add/update staff
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setAlert({ type: "", message: "" });
+  setLoadingAction(true);
+
+  if (!form.name || !form.email || !form.zoneId) {
+    setAlert({ type: "error", message: "⚠️ Please fill all required fields" });
+    setLoadingAction(false);
+    return;
+  }
+
+  // Check if email already exists (excluding current editing staff)
+  const emailExists = staff.some(
+    (s) => s.email.toLowerCase() === form.email.trim().toLowerCase() && s.id !== editingId
+  );
+  if (emailExists) {
+    setAlert({ type: "error", message: "⚠️ This email is already assigned to another staff" });
+    setLoadingAction(false);
+    return;
+  }
+
+  const payload = {
+    name: form.name.trim(),
+    email: form.email.trim(),
+    zoneId: Number(form.zoneId),
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setFormError("");
-
-    const { name, email, password, confirmPassword, zoneId } = form;
-
-    if (!name || !email || (!editingId && !password) || !zoneId) {
-      setFormError("⚠️ Please fill all required fields");
-      return;
-    }
-
-    if (!editingId) {
-      const passwordError = validatePassword(password);
-      if (passwordError) {
-        setFormError(passwordError);
-        return;
-      }
-      if (password !== confirmPassword) {
-        setFormError("⚠️ Passwords do not match");
-        return;
-      }
-    }
-
-    const payload = {
-      name: name.trim(),
-      email: email.trim(),
-      password: password ? password.trim() : undefined,
-      role: "delivery", // always delivery
-      zoneId: Number(zoneId),
-    };
-
+  try {
     if (editingId) {
-      dispatch(updateStaff({ id: editingId, payload }));
+      await dispatch(updateStaff({ id: editingId, payload })).unwrap();
+      setAlert({ type: "success", message: "Staff updated successfully" });
     } else {
-      dispatch(addStaff(payload));
+      await dispatch(addStaff(payload)).unwrap();
+      setAlert({ type: "success", message: "Staff added successfully. Credentials sent!" });
     }
 
-    setForm({
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      zoneId: "",
-    });
+    setForm({ name: "", email: "", zoneId: "" });
     setEditingId(null);
-  };
 
+    // Refresh staff list automatically
+    dispatch(fetchStaff());
+  } catch (err) {
+    setAlert({ type: "error", message: err.message || "Failed to perform action" });
+  } finally {
+    setLoadingAction(false);
+  }
+};
+
+  // Handle edit form
   const handleEdit = (staffMember) => {
     setForm({
       name: staffMember.name,
       email: staffMember.email,
-      password: "",
-      confirmPassword: "",
       zoneId: staffMember.zoneId,
     });
     setEditingId(staffMember.id);
-    setFormError("");
+    setAlert({ type: "", message: "" });
   };
 
   const handleCancel = () => {
-    setForm({
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      zoneId: "",
-    });
+    setForm({ name: "", email: "", zoneId: "" });
     setEditingId(null);
-    setFormError("");
+    setAlert({ type: "", message: "" });
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Delete this staff?")) dispatch(deleteStaff(id));
+  // Modern delete confirmation
+  const handleDelete = async (id) => {
+    if (!window.confirm) return; // fallback
+    setLoadingAction(true);
+    try {
+      await dispatch(deleteStaff(id)).unwrap();
+      setAlert({ type: "success", message: "Staff deleted successfully" });
+      dispatch(fetchStaff()); // Refresh automatically
+    } catch (err) {
+      setAlert({ type: "error", message: err.message || "Failed to delete staff" });
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
   if (loading) return <div className="p-4">Loading...</div>;
@@ -124,9 +129,14 @@ const DeliveryStaff = () => {
         🚚 Manage Delivery Staff
       </h1>
 
-      {formError && (
-        <div className="mb-4 bg-red-100 text-red-700 p-3 rounded-lg shadow-sm">
-          {formError}
+      {/* Alerts */}
+      {alert.message && (
+        <div
+          className={`mb-4 p-3 rounded-lg shadow-sm ${
+            alert.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+          }`}
+        >
+          {alert.message}
         </div>
       )}
 
@@ -140,52 +150,42 @@ const DeliveryStaff = () => {
           placeholder="Full Name *"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="border p-3 rounded-lg"
+          className="border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         <input
           type="email"
           placeholder="Email *"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className="border p-3 rounded-lg"
+          className="border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
-        {!editingId && (
-          <>
-            <input
-              type="password"
-              placeholder="Password *"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="border p-3 rounded-lg"
-            />
-            <input
-              type="password"
-              placeholder="Confirm Password *"
-              value={form.confirmPassword}
-              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-              className="border p-3 rounded-lg"
-            />
-          </>
-        )}
         <select
           value={form.zoneId}
           onChange={(e) => setForm({ ...form, zoneId: e.target.value })}
-          className="border p-3 rounded-lg"
+          className="border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <option value="">Select Zone *</option>
-          {zones.map((z) => (
-            <option key={z.id} value={z.id}>
-              {z.name} {z.areas ? `(${z.areas})` : ""}
-            </option>
-          ))}
+          {zones.map((z) => {
+            const isAssigned = staff.some(
+              (s) => s.zoneId === z.id && s.id !== editingId
+            );
+            return (
+              <option key={z.id} value={z.id} disabled={isAssigned}>
+                {z.name} {z.areas ? `(${z.areas})` : ""} {isAssigned ? "(Assigned)" : ""}
+              </option>
+            );
+          })}
         </select>
 
         <div className="flex gap-3 col-span-full mt-4">
           <button
             type="submit"
-            className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition shadow-md"
+            disabled={loadingAction}
+            className={`bg-green-600 text-white px-5 py-2 rounded-lg transition shadow-md ${
+              loadingAction ? "opacity-50 cursor-not-allowed" : "hover:bg-green-700"
+            }`}
           >
-            {editingId ? "Update Staff" : "Add Staff"}
+            {editingId ? "Update Staff" : loadingAction ? "Adding..." : "Add Staff"}
           </button>
           {editingId && (
             <button
@@ -230,13 +230,14 @@ const DeliveryStaff = () => {
                     onClick={() => handleEdit(s)}
                     className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition flex items-center gap-1"
                   >
-                    <FaEdit /> Edit
+                    <FaEdit /> 
                   </button>
                   <button
                     onClick={() => handleDelete(s.id)}
+                    disabled={loadingAction}
                     className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition flex items-center gap-1"
                   >
-                    <FaTrash /> Delete
+                    <FaTrash /> 
                   </button>
                 </td>
               </tr>

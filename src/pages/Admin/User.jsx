@@ -1,19 +1,46 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import API from "../../api/axiosConfig";
+// src/pages/admin/UsersDashboard.jsx
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchUserById,
+  updateUser,
+  deleteUser,
+} from "../../features/user/userSlice";
+import { getAllUsers } from "../../api/userApi"; // API call to get all users
 
-const fetchUsers = async () => {
-  const res = await API.get("/users");
-  return res.data;
-};
+const UsersDashboard = () => {
+  const dispatch = useDispatch();
+  const { fetchedUsers, loading, error } = useSelector((state) => state.user);
+  const [users, setUsers] = React.useState([]);
 
-function Users() {
-  const { data, error, isLoading } = useQuery({
-    queryKey: ["users"],
-    queryFn: fetchUsers,
-  });
+  // Fetch all users from backend
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await getAllUsers();
+        setUsers(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchUsers();
+  }, []);
 
-  if (isLoading)
+  const handleDelete = (userId) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      dispatch(deleteUser(userId));
+      setUsers((prev) => prev.filter((user) => user.id !== userId));
+    }
+  };
+
+  const handleUpdateRole = (userId, newRole) => {
+    dispatch(updateUser({ userId, userData: { role: newRole } }));
+    setUsers((prev) =>
+      prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user))
+    );
+  };
+
+  if (loading)
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-gray-500 text-lg animate-pulse">Loading users...</div>
@@ -23,7 +50,7 @@ function Users() {
   if (error)
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="text-red-500 text-lg">Error: {error.message}</div>
+        <div className="text-red-500 text-lg">Error: {error}</div>
       </div>
     );
 
@@ -32,12 +59,10 @@ function Users() {
       <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">Users List</h2>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data.length === 0 ? (
-          <div className="text-center text-gray-500 col-span-full">
-            No users found
-          </div>
+        {users.length === 0 ? (
+          <div className="text-center text-gray-500 col-span-full">No users found</div>
         ) : (
-          data.map((user) => (
+          users.map((user) => (
             <div
               key={user.id}
               className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition duration-300"
@@ -49,18 +74,35 @@ function Users() {
               <p className="text-gray-600 mb-2">
                 <span className="font-medium">Email:</span> {user.email}
               </p>
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-3">
                 <span className="font-medium">Role:</span>{" "}
                 <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                   {user.role || "N/A"}
                 </span>
               </p>
+
+              <div className="flex gap-2">
+                <button
+                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
+                  onClick={() =>
+                    handleUpdateRole(user.id, user.role === "admin" ? "user" : "admin")
+                  }
+                >
+                  Toggle Role
+                </button>
+                <button
+                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                  onClick={() => handleDelete(user.id)}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))
         )}
       </div>
     </div>
   );
-}
+};
 
-export default Users;
+export default UsersDashboard;

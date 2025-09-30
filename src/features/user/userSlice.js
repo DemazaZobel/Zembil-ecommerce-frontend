@@ -1,6 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { loginUser as loginUserAPI, registerUser as registerUserAPI } from "../../api/authApi";
-import { getUserById } from "../../api/userApi";
+import {
+  loginUser as loginUserAPI,
+  registerUser as registerUserAPI,
+} from "../../api/authApi";
+import {
+  getUserById,
+  updateUserById,
+  deleteUserById,
+} from "../../api/userApi";
 
 // Load initial state from localStorage
 const userFromStorage = localStorage.getItem("user")
@@ -8,14 +15,16 @@ const userFromStorage = localStorage.getItem("user")
   : null;
 
 const initialState = {
-  info: userFromStorage?.user || null, // store full user object including role
+  info: userFromStorage?.user || null,
   token: userFromStorage?.token || null,
   loading: false,
   error: null,
   fetchedUsers: {}, // cache for users fetched by ID
 };
 
-// Async thunk for login
+// --- Async Thunks ---
+
+// Login
 export const loginUser = createAsyncThunk(
   "user/loginUser",
   async (credentials, { rejectWithValue }) => {
@@ -28,7 +37,7 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// Async thunk for registration
+// Registration
 export const registerUser = createAsyncThunk(
   "user/registerUser",
   async (userData, { rejectWithValue }) => {
@@ -41,7 +50,7 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// Async thunk to fetch user by ID (for review authors)
+// Fetch user by ID
 export const fetchUserById = createAsyncThunk(
   "user/fetchUserById",
   async (userId, { rejectWithValue }) => {
@@ -54,6 +63,33 @@ export const fetchUserById = createAsyncThunk(
   }
 );
 
+// Update user
+export const updateUser = createAsyncThunk(
+  "user/updateUser",
+  async ({ userId, userData }, { rejectWithValue }) => {
+    try {
+      const updatedUser = await updateUserById(userId, userData);
+      return updatedUser;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+// Delete user
+export const deleteUser = createAsyncThunk(
+  "user/deleteUser",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const result = await deleteUserById(userId);
+      return { id: userId, ...result };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+// --- Slice ---
 const userSlice = createSlice({
   name: "user",
   initialState,
@@ -65,7 +101,6 @@ const userSlice = createSlice({
       localStorage.removeItem("user");
     },
   },
-
   extraReducers: (builder) => {
     builder
       // Login
@@ -100,10 +135,42 @@ const userSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Fetch user by ID (for reviews)
+      // Fetch user by ID
       .addCase(fetchUserById.fulfilled, (state, action) => {
         if (!state.fetchedUsers) state.fetchedUsers = {};
         state.fetchedUsers[action.payload.id] = action.payload;
+      })
+
+      // Update user
+      .addCase(updateUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUser.fulfilled, (state, action) => {
+        state.loading = false;
+        const updated = action.payload;
+        state.fetchedUsers[updated.id] = updated;
+        if (state.info?.id === updated.id) state.info = updated; // update logged-in user if editing self
+      })
+      .addCase(updateUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Delete user
+      .addCase(deleteUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.loading = false;
+        const deletedId = action.payload.id;
+        delete state.fetchedUsers[deletedId];
+        if (state.info?.id === deletedId) state.info = null; // log out if deleted self
+      })
+      .addCase(deleteUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });

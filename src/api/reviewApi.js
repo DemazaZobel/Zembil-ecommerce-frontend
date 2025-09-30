@@ -6,12 +6,14 @@ import API from "./axiosConfig"; // update if needed
 // --- Get all reviews ---
 export const fetchAllReviews = async () => {
   const res = await API.get("/reviews");
+  console.log("Fetched all reviews:", res.data);
   return res.data;
 };
 
 // --- Get reviews for a specific product ---
 export const fetchReviewsByProduct = async (productId) => {
   const res = await API.get(`/reviews/product/${productId}`);
+  console.log("Fetched reviews for product:", res.data);
   return res.data;
 };
 

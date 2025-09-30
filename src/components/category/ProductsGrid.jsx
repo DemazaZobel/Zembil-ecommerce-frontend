@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   FaStar,
   FaRegStar,
@@ -9,11 +9,11 @@ import {
 } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, fetchCart } from "../../features/cart/cartSlice";
-import { getReviewsByProduct } from "../../features/Review/reviewSlice"; // <-- fetch reviews
+import { getReviewsByProduct } from "../../features/Review/reviewSlice";
 import { useNavigate } from "react-router-dom";
 import placeholderImage from "../../assets/placeholder.png";
 
-const ProductsGrid = ({ items, title }) => {
+const ProductsGrid = ({ items }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [wishlist, setWishlist] = useState([]);
@@ -24,7 +24,6 @@ const ProductsGrid = ({ items, title }) => {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [showSizes, setShowSizes] = useState(false);
 
-  // --- Redux state ---
   const { productReviews } = useSelector((state) => state.review || {});
 
   // --- Wishlist ---
@@ -43,7 +42,7 @@ const ProductsGrid = ({ items, title }) => {
     setShowSizes(false);
     document.body.style.overflow = "hidden";
 
-    // Fetch reviews for the product when modal opens
+    // Fetch reviews for this product
     dispatch(getReviewsByProduct(product.id));
   };
 
@@ -54,7 +53,8 @@ const ProductsGrid = ({ items, title }) => {
 
   const handleAddToCart = async () => {
     if (!modalProduct) return;
-    if (!selectedSize) return alert("Please select a size before adding to cart.");
+    if (!selectedSize)
+      return alert("Please select a size before adding to cart.");
 
     const sizeObj = modalProduct.sizes.find(
       (s) => s.sizeId === Number(selectedSize)
@@ -116,6 +116,7 @@ const ProductsGrid = ({ items, title }) => {
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {items.map((item) => {
           const avgRating = getAverageRating(item.id);
+          const reviews = productReviews?.[item.id] || [];
           return (
             <div
               key={item.id}
@@ -139,35 +140,65 @@ const ProductsGrid = ({ items, title }) => {
                 className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-red-50 transition-colors duration-300 z-10"
               >
                 <FaHeart
-                  className={wishlist.includes(item.id) ? "text-red-500" : "text-gray-400"}
+                  className={
+                    wishlist.includes(item.id) ? "text-red-500" : "text-gray-400"
+                  }
                 />
               </button>
 
               <div className="p-4" onClick={() => handleCardClick(item.id)}>
-                <h3 className="font-semibold text-gray-800 truncate mb-1">{item.name}</h3>
+                <h3 className="font-semibold text-gray-800 truncate mb-1">
+                  {item.name}
+                </h3>
                 {item.category?.type && (
-                  <p className="text-sm text-gray-500 mb-1">{item.category.type}</p>
+                  <p className="text-sm text-gray-500 mb-1">
+                    {item.category.type}
+                  </p>
                 )}
                 {item.description && (
-                  <p className="text-xs text-gray-600 line-clamp-2 mb-2">{item.description}</p>
+                  <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                    {item.description}
+                  </p>
                 )}
 
-                {/* Display average rating */}
+                {/* Rating / Reviews */}
                 <div className="flex items-center mb-2">
-                  {[...Array(5)].map((_, i) =>
-                    i < Math.round(avgRating) ? (
-                      <FaStar key={i} className="text-yellow-400 mr-1 text-xs" />
-                    ) : (
-                      <FaRegStar key={i} className="text-gray-300 mr-1 text-xs" />
-                    )
-                  )}
-                  {avgRating > 0 && (
-                    <span className="text-xs text-gray-600 ml-1">({avgRating.toFixed(1)})</span>
+                  {reviews.length > 0 ? (
+                    <>
+                      {[...Array(5)].map((_, i) =>
+                        i < Math.round(avgRating) ? (
+                          <FaStar
+                            key={i}
+                            className="text-yellow-400 mr-1 text-xs"
+                          />
+                        ) : (
+                          <FaRegStar
+                            key={i}
+                            className="text-gray-300 mr-1 text-xs"
+                          />
+                        )
+                      )}
+                      <span className="text-xs text-gray-600 ml-1">
+                        {avgRating.toFixed(1)} ({reviews.length} reviews)
+                      </span>
+                    </>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/product/${item.id}`);
+                      }}
+                      className="text-xs text-blue-500 underline"
+                    >
+                      No reviews – be the first!
+                    </button>
                   )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-center mt-2 gap-2">
-                  <span className="text-primary font-bold text-base">${item.price}</span>
+                  <span className="text-primary font-bold text-base">
+                    ${item.price}
+                  </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -221,32 +252,53 @@ const ProductsGrid = ({ items, title }) => {
               </button>
             </div>
 
-            <h3 className="text-lg font-bold text-center mb-2">{modalProduct.name}</h3>
+            <h3 className="text-lg font-bold text-center mb-2">
+              {modalProduct.name}
+            </h3>
             {modalProduct.category?.type && (
-              <p className="text-sm text-gray-500 text-center mb-1">{modalProduct.category.type}</p>
+              <p className="text-sm text-gray-500 text-center mb-1">
+                {modalProduct.category.type}
+              </p>
             )}
             {modalProduct.description && (
-              <p className="text-xs text-gray-600 text-center mb-2">{modalProduct.description}</p>
+              <p className="text-xs text-gray-600 text-center mb-2">
+                {modalProduct.description}
+              </p>
             )}
 
-            {/* Modal average rating */}
+            {/* Modal rating */}
             <div className="flex justify-center mb-4">
               {(() => {
                 const avgRating = getAverageRating(modalProduct.id);
-                return (
-                  <>
-                    {[...Array(5)].map((_, i) =>
-                      i < Math.round(avgRating) ? (
-                        <FaStar key={i} className="text-yellow-400 mr-1" />
-                      ) : (
-                        <FaRegStar key={i} className="text-gray-300 mr-1" />
-                      )
-                    )}
-                    {avgRating > 0 && (
-                      <span className="text-xs text-gray-600 ml-1">({avgRating.toFixed(1)})</span>
-                    )}
-                  </>
-                );
+                const reviews = productReviews?.[modalProduct.id] || [];
+                if (reviews.length > 0) {
+                  return (
+                    <>
+                      {[...Array(5)].map((_, i) =>
+                        i < Math.round(avgRating) ? (
+                          <FaStar key={i} className="text-yellow-400 mr-1" />
+                        ) : (
+                          <FaRegStar key={i} className="text-gray-300 mr-1" />
+                        )
+                      )}
+                      <span className="text-xs text-gray-600 ml-1">
+                        {avgRating.toFixed(1)} ({reviews.length} reviews)
+                      </span>
+                    </>
+                  );
+                } else {
+                  return (
+                    <button
+                      onClick={() => {
+                        closeModal();
+                        navigate(`/product/${modalProduct.id}`);
+                      }}
+                      className="text-xs text-blue-500 underline"
+                    >
+                      No reviews – be the first!
+                    </button>
+                  );
+                }
               })()}
             </div>
 
@@ -256,8 +308,9 @@ const ProductsGrid = ({ items, title }) => {
                 onClick={() => setShowSizes(!showSizes)}
                 className="w-full border rounded px-3 py-2 text-left"
               >
-                {modalProduct.sizes.find((s) => s.sizeId === Number(selectedSize))?.name ||
-                  "Select size"}
+                {modalProduct.sizes.find(
+                  (s) => s.sizeId === Number(selectedSize)
+                )?.name || "Select size"}
               </button>
               {showSizes && (
                 <ul className="absolute z-50 w-full bg-white border rounded mt-1 max-h-40 overflow-auto shadow-lg">
@@ -289,14 +342,17 @@ const ProductsGrid = ({ items, title }) => {
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-2">
-              <span className="text-primary font-bold text-base">${modalProduct.price}</span>
+              <span className="text-primary font-bold text-base">
+                ${modalProduct.price}
+              </span>
               <button
                 onClick={handleAddToCart}
                 disabled={quantity <= 0}
                 className={`bg-primary text-white px-3 py-2 rounded-lg text-sm w-full sm:w-auto transition-colors
-                  ${quantity <= 0
-                    ? "bg-gray-400 cursor-not-allowed hover:bg-gray-400"
-                    : "hover:bg-secondary"
+                  ${
+                    quantity <= 0
+                      ? "bg-gray-400 cursor-not-allowed hover:bg-gray-400"
+                      : "hover:bg-secondary"
                   }`}
               >
                 Add to Cart

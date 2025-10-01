@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import API from "../../api/axiosConfig";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Sizes = () => {
   const queryClient = useQueryClient();
@@ -20,20 +22,20 @@ const Sizes = () => {
   // Add / Update mutation
   const saveSizeMutation = useMutation({
     mutationFn: async (size) => {
-      if (editingSize) {
-        return await API.put(`/sizes/${editingSize.id}`, size);
+      if (size.id) {
+        return await API.put(`/sizes/${size.id}`, size);
       } else {
         return await API.post("/sizes", size);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries(["sizes"]);
       setName("");
       setEditingSize(null);
-      alert(editingSize ? "Size updated successfully" : "Size added successfully");
+      toast.success(variables.id ? "Size updated successfully" : "Size added successfully");
     },
     onError: (err) => {
-      alert("Error: " + err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message || "An error occurred");
     },
   });
 
@@ -42,25 +44,32 @@ const Sizes = () => {
     mutationFn: async (id) => await API.delete(`/sizes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries(["sizes"]);
-      alert("Size deleted successfully");
+      toast.success("Size deleted successfully");
     },
     onError: (err) => {
-      alert("Error: " + err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message || "An error occurred");
     },
   });
 
- const handleSave = () => {
-  if (!name) return alert("Size name is required");
+  const handleSave = () => {
+    if (!name.trim()) {
+      toast.warn("Size name is required");
+      return;
+    }
 
-  // Check for duplicate
-  const duplicate = sizes.find(
-    (s) => s.name.toLowerCase() === name.trim().toLowerCase() && (!editingSize || s.id !== editingSize.id)
-  );
-  if (duplicate) return alert("This size already exists");
+    // Check for duplicate
+    const duplicate = sizes.find(
+      (s) =>
+        s.name.toLowerCase() === name.trim().toLowerCase() &&
+        (!editingSize || s.id !== editingSize.id)
+    );
+    if (duplicate) {
+      toast.warn("This size already exists");
+      return;
+    }
 
-  saveSizeMutation.mutate({ name: name.trim() });
-};
-
+    saveSizeMutation.mutate({ id: editingSize?.id, name: name.trim() });
+  };
 
   const handleEdit = (size) => {
     setEditingSize(size);
@@ -72,14 +81,36 @@ const Sizes = () => {
     setName("");
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this size?")) {
-      deleteSizeMutation.mutate(id);
-    }
+  const handleDelete = (size) => {
+    toast.info(
+      <div>
+        Are you sure you want to delete <b>{size.name}</b>?
+        <div className="mt-2 flex gap-2 justify-end">
+          <button
+            className="bg-red-500 text-white px-3 py-1 rounded"
+            onClick={() => {
+              deleteSizeMutation.mutate(size.id);
+              toast.dismiss();
+            }}
+          >
+            Yes
+          </button>
+          <button
+            className="bg-gray-300 text-gray-800 px-3 py-1 rounded"
+            onClick={() => toast.dismiss()}
+          >
+            No
+          </button>
+        </div>
+      </div>,
+      { autoClose: false, closeOnClick: false }
+    );
   };
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <h1 className="text-4xl font-bold mb-8 text-gray-800 text-center">Manage Sizes</h1>
 
       {/* Add / Edit Size Form */}
@@ -114,9 +145,15 @@ const Sizes = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-100">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -132,7 +169,7 @@ const Sizes = () => {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(s.id)}
+                      onClick={() => handleDelete(s)}
                       className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded shadow-sm transition"
                     >
                       Delete

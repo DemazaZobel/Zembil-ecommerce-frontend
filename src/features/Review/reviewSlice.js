@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import * as reviewApi from "../../api/reviewApi"; // ✅ named imports
+import * as reviewApi from "../../api/reviewApi";
 
 // Fetch reviews for a specific product
 export const getReviewsByProduct = createAsyncThunk(
@@ -53,7 +53,6 @@ export const removeReview = createAsyncThunk(
   }
 );
 
-// Slice
 const reviewSlice = createSlice({
   name: "review",
   initialState: {
@@ -73,7 +72,11 @@ const reviewSlice = createSlice({
       .addCase(getReviewsByProduct.fulfilled, (state, action) => {
         state.loading = false;
         const { productId, reviews } = action.payload;
-        state.productReviews[productId] = reviews;
+        // ✅ Ensure rating is a number
+        state.productReviews[productId] = reviews.map((r) => ({
+          ...r,
+          rating: Number(r.rating) || 0,
+        }));
       })
       .addCase(getReviewsByProduct.rejected, (state, action) => {
         state.loading = false;
@@ -82,7 +85,7 @@ const reviewSlice = createSlice({
 
       // Add review
       .addCase(addReview.fulfilled, (state, action) => {
-        const review = action.payload;
+        const review = { ...action.payload, rating: Number(action.payload.rating) || 0 };
         const pid = review.productId;
         if (!state.productReviews[pid]) state.productReviews[pid] = [];
         state.productReviews[pid].push(review);
@@ -91,7 +94,7 @@ const reviewSlice = createSlice({
 
       // Edit review
       .addCase(editReview.fulfilled, (state, action) => {
-        const updated = action.payload;
+        const updated = { ...action.payload, rating: Number(action.payload.rating) || 0 };
         const pid = updated.productId;
         if (state.productReviews[pid]) {
           state.productReviews[pid] = state.productReviews[pid].map((r) =>

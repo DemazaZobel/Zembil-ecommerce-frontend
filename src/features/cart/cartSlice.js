@@ -70,7 +70,12 @@ const cartSlice = createSlice({
     status: "idle",
     error: null,
   },
-  reducers: {},
+  reducers: {
+    clearCart: (state) => {
+    state.items = [];
+    state.totalQuantity = 0;
+  },
+  },
   extraReducers: (builder) => {
     // Fetch cart
     builder.addCase(fetchCart.fulfilled, (state, action) => {
@@ -111,5 +116,6 @@ const cartSlice = createSlice({
   },
 });
 
+export const { clearCart } = cartSlice.actions;
 
 export default cartSlice.reducer;

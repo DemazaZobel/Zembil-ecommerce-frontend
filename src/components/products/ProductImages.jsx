@@ -16,7 +16,11 @@ const ProductImages = ({
   // Merge existing images and new previews
   useEffect(() => {
     const newPreviews = [
-      ...existingImages,
+      // Ensure existing images always have full URL
+      ...existingImages.map((img) =>
+        img.startsWith("http") ? img : `http://localhost:5000/${img}`
+      ),
+      // Local previews for new files
       ...imageFiles.map((file) => URL.createObjectURL(file)),
     ];
     setPreviews(newPreviews);
@@ -45,7 +49,7 @@ const ProductImages = ({
         multiple
         accept="image/*"
         ref={fileInputRef}
-        onChange={(e) => handleImageChange(e)}
+        onChange={handleImageChange}
         className="hidden"
       />
 

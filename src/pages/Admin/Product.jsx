@@ -1,3 +1,4 @@
+// src/pages/admin/ProductDashboard.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -11,13 +12,15 @@ import { Edit, Trash2, X } from "lucide-react";
 
 const ProductDashboard = () => {
   const dispatch = useDispatch();
-  const { products, loading, error } = useSelector((state) => state.products);
+  const { products, loading } = useSelector((state) => state.products);
 
   const [editingProductId, setEditingProductId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState(null);
+
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Filters
   const [search, setSearch] = useState("");
@@ -50,10 +53,24 @@ const ProductDashboard = () => {
 
   const handleDelete = async () => {
     if (!deleteProductId) return;
-    await dispatch(deleteProduct(deleteProductId)).unwrap();
-    setDeleteDialogOpen(false);
-    setDeleteProductId(null);
-    dispatch(fetchProducts());
+
+    try {
+      await dispatch(deleteProduct(deleteProductId)).unwrap();
+      setErrorMessage(""); // clear any previous error
+      setDeleteDialogOpen(false);
+      setDeleteProductId(null);
+      dispatch(fetchProducts());
+    } catch (err) {
+      console.error("Delete error:", err);
+      setErrorMessage(
+        err?.message?.includes("violates foreign key") ||
+        err?.includes("foreign key")
+          ? "This product cannot be deleted because it is part of existing orders."
+          : "Failed to delete product. Please try again."
+      );
+      setDeleteDialogOpen(false);
+      setDeleteProductId(null);
+    }
   };
 
   const handleCancelDelete = () => {
@@ -144,7 +161,9 @@ const ProductDashboard = () => {
 
       {/* Loading / Error */}
       {loading && <p className="text-gray-600 mt-2">Loading...</p>}
-      {error && <p className="text-red-500 mt-2">{error}</p>}
+      {errorMessage && (
+        <p className="text-red-500 mt-2 font-medium">{errorMessage}</p>
+      )}
 
       {/* Product Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
@@ -219,7 +238,7 @@ const ProductDashboard = () => {
         <ConfirmDialog
           isOpen={deleteDialogOpen}
           title="Delete Product"
-          message="Are you sure you want to delete this product?"
+          message="Are you sure you want to delete this product? This cannot be undone."
           onConfirm={handleDelete}
           onCancel={handleCancelDelete}
         />
@@ -232,11 +251,13 @@ const ProductDashboard = () => {
 const ProductCard = ({ product, onEdit, onDelete }) => {
   const [currentImg, setCurrentImg] = useState(0);
 
-  const nextImage = () => setCurrentImg((prev) => (prev + 1) % product.images.length);
+  const nextImage = () =>
+    setCurrentImg((prev) => (prev + 1) % product.images.length);
   const prevImage = () =>
     setCurrentImg((prev) => (prev - 1 + product.images.length) % product.images.length);
 
-  const totalStock = product.sizes?.reduce((acc, s) => acc + (s.stock || 0), 0) ?? 0;
+  const totalStock =
+    product.sizes?.reduce((acc, s) => acc + (s.stock || 0), 0) ?? 0;
 
   return (
     <div className="bg-white border rounded-lg shadow-md flex flex-col">
@@ -269,7 +290,9 @@ const ProductCard = ({ product, onEdit, onDelete }) => {
         <div>
           <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
           <p className="text-gray-600">${product.price}</p>
-          <p className="text-sm text-gray-500">{product.category?.name || "Uncategorized"}</p>
+          <p className="text-sm text-gray-500">
+            {product.category?.name || "Uncategorized"}
+          </p>
 
           <p
             className={`text-sm font-medium mt-1 ${
@@ -286,7 +309,9 @@ const ProductCard = ({ product, onEdit, onDelete }) => {
                 <span
                   key={size.id}
                   className={`px-2 py-1 rounded text-sm font-medium ${
-                    size.stock > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    size.stock > 0
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
                   }`}
                 >
                   {size.name}: {size.stock}

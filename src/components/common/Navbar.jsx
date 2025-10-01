@@ -14,7 +14,8 @@ import { Toaster, toast } from "react-hot-toast";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false); // Desktop profile dropdown
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false); // Mobile profile dropdown
   const [productsDropdownOpen, setProductsDropdownOpen] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
@@ -22,12 +23,15 @@ const Navbar = () => {
   const { info } = useSelector((state) => state.user);
   const { totalQuantity } = useSelector((state) => state.cart);
   const profileRef = useRef(null);
+  const mobileProfileRef = useRef(null);
 
+  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
         setMobileMenuOpen(false);
         setProfileMenuOpen(false);
+        setMobileProfileOpen(false);
         setProductsDropdownOpen({});
       }
     };
@@ -35,11 +39,22 @@ const Navbar = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Close profile dropdown on click outside
+  // Close desktop profile dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close mobile profile dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (mobileProfileRef.current && !mobileProfileRef.current.contains(e.target)) {
+        setMobileProfileOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -53,6 +68,7 @@ const Navbar = () => {
     navigate("/");
   };
 
+  // Handler for desktop profile icon
   const handleProfileClick = () => {
     if (info) setProfileMenuOpen(!profileMenuOpen);
     else {
@@ -112,7 +128,7 @@ const Navbar = () => {
                       {item.label}
                       <FaChevronDown className="ml-1 text-xs" />
                     </button>
-                    <div className="absolute top-full left-0 mt-2 bg-white shadow-lg rounded-md opacity-0 group-hover:opacity-100 invisible group-hover:visible transform transition-all duration-200 scale-95 group-hover:scale-100">
+                    <div className="absolute top-full left-0 mt-2 w-40 bg-white shadow-lg rounded-md opacity-0 group-hover:opacity-100 invisible group-hover:visible transform transition-all duration-200 scale-95 group-hover:scale-100">
                       {item.dropdown.map((d) => (
                         <Link
                           key={d.key}
@@ -132,7 +148,7 @@ const Navbar = () => {
                     className={`relative font-medium text-sm hover:text-[#3674B5] transition-colors duration-200 ${
                       isActive(item.path)
                         ? "after:absolute after:-bottom-1 after:left-0 after:w-full after:h-[2px] after:bg-[#3674B5]"
-                        : ""
+                        : "text-black"
                     }`}
                   >
                     {item.label}
@@ -154,13 +170,10 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Right Icons */}
+          {/* Right Icons (Desktop) */}
           <div className="hidden md:flex items-center space-x-6 relative" ref={profileRef}>
             {/* Cart */}
-            <Link
-              to="/cart"
-              className="text-black text-2xl hover:text-[#3674B5] relative"
-            >
+            <Link to="/cart" className="text-black text-2xl hover:text-[#3674B5] relative">
               <FaShoppingCart />
               {totalQuantity > 0 && (
                 <span className="absolute -top-2 -right-3 bg-secondary text-black text-xs font-bold rounded-full px-2">
@@ -169,7 +182,7 @@ const Navbar = () => {
               )}
             </Link>
 
-            {/* Profile */}
+            {/* Desktop Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={handleProfileClick}
@@ -207,7 +220,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Hamburger */}
+          {/* Mobile Icons */}
           <div className="md:hidden flex items-center">
             <Link to="/cart" className="text-2xl text-[#3674B5] mr-4 relative">
               <FaShoppingCart />
@@ -217,12 +230,60 @@ const Navbar = () => {
                 </span>
               )}
             </Link>
-            <button
-              onClick={handleProfileClick}
-              className="text-2xl text-[#3674B5] mr-4"
-            >
-              <FaUserCircle />
-            </button>
+
+            {/* Mobile Profile Dropdown */}
+            <div className="relative" ref={mobileProfileRef}>
+              <button
+                onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+                className="text-2xl text-[#3674B5] mr-4"
+                aria-label="Profile menu"
+              >
+                <FaUserCircle />
+              </button>
+
+              {mobileProfileOpen && info && (
+                <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-md py-2 z-50">
+                  <Link
+                    to="/profile"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                    onClick={() => setMobileProfileOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  {info?.role === "admin" && (
+                    <Link
+                      to="/admin/dashboard"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setMobileProfileOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setMobileProfileOpen(false);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+
+              {!info && (
+                <Link
+                  to="/login"
+                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                  onClick={() => setMobileProfileOpen(false)}
+                >
+                  Login
+                </Link>
+              )}
+            </div>
+
+            {/* Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="text-3xl text-[#3674B5] focus:outline-none"
@@ -276,28 +337,19 @@ const Navbar = () => {
               )
             )}
 
-            {/* Admin Dashboard */}
-            {info?.role === "admin" && (
-              <Link
-                to="/admin/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-6 py-2 rounded-2xl hover:bg-gray-200 transition text-center w-full text-black"
-              >
-                Dashboard
-              </Link>
-            )}
-
-            {/* Mobile Logout */}
+            {/* Admin Dashboard & Logout */}
             {info && (
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-                className="px-6 py-2 bg-red-500 text-white rounded-2xl hover:bg-red-600 transition text-center w-full"
-              >
-                Logout
-              </button>
+              <>
+                {info?.role === "admin" && (
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-lg font-medium hover:text-[#3674B5] transition-all duration-200 w-full text-center"
+                  >
+                    Dashboard
+                  </Link>
+                )}
+              </>
             )}
           </div>
         </div>

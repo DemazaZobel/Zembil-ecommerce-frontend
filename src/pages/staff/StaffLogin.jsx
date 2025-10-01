@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { deliveryLogin } from "../../features/delivery/deliverySlice";
 import { useNavigate } from "react-router-dom";
 import loginImage from "../../assets/login.png";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const MessageBox = ({ message, type = "error", onClose }) => {
   const colors = {
@@ -32,6 +33,7 @@ const StaffLogin = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -45,7 +47,6 @@ const StaffLogin = () => {
       await dispatch(deliveryLogin(form)).unwrap();
       navigate("/staff/dashboard");
     } catch (err) {
-      // Map backend errors to user-friendly messages
       let friendlyMessage = "Invalid credentials.";
       if (err?.response?.status === 400) {
         friendlyMessage = "Please enter both email and password.";
@@ -63,7 +64,7 @@ const StaffLogin = () => {
       <div className="flex flex-col md:flex-row bg-white shadow-xl rounded-2xl overflow-hidden w-full max-w-4xl transition-transform transform hover:scale-105">
 
         {/* Left Side Image */}
-        <div className="hidden md:flex md:w-1/2 bg-blue-100 items-center justify-center ">
+        <div className="hidden md:flex md:w-1/2 bg-blue-100 items-center justify-center">
           <img
             src={loginImage}
             alt="Delivery illustration"
@@ -95,7 +96,7 @@ const StaffLogin = () => {
             />
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 relative">
             <input
               type="email"
               name="email"
@@ -105,15 +106,27 @@ const StaffLogin = () => {
               required
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 transition"
             />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={handleChange}
-              required
-              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 transition"
-            />
+
+            {/* Password input with eye toggle */}
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 transition pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -129,7 +142,9 @@ const StaffLogin = () => {
             <button
               type="button"
               className="text-sm text-blue-600 hover:underline"
-              onClick={() => setInfoMsg("Please contact the admin to reset your password.")}
+              onClick={() =>
+                setInfoMsg("Please contact the admin to reset your password.")
+              }
             >
               Forgot password?
             </button>

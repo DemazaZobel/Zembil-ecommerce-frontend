@@ -19,12 +19,11 @@ const initialState = {
   token: userFromStorage?.token || null,
   loading: false,
   error: null,
-  fetchedUsers: {}, // cache for users fetched by ID
+  fetchedUsers: {},
 };
 
 // --- Async Thunks ---
 
-// Login
 export const loginUser = createAsyncThunk(
   "user/loginUser",
   async (credentials, { rejectWithValue }) => {
@@ -37,7 +36,6 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// Registration
 export const registerUser = createAsyncThunk(
   "user/registerUser",
   async (userData, { rejectWithValue }) => {
@@ -50,7 +48,6 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// Fetch user by ID
 export const fetchUserById = createAsyncThunk(
   "user/fetchUserById",
   async (userId, { rejectWithValue }) => {
@@ -63,20 +60,19 @@ export const fetchUserById = createAsyncThunk(
   }
 );
 
-// Update user
 export const updateUser = createAsyncThunk(
   "user/updateUser",
   async ({ userId, userData }, { rejectWithValue }) => {
     try {
       const updatedUser = await updateUserById(userId, userData);
-      return updatedUser;
+      // Handle backend returning { message, user } or just user
+      return updatedUser.user ? updatedUser.user : updatedUser;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
 
-// Delete user
 export const deleteUser = createAsyncThunk(
   "user/deleteUser",
   async (userId, { rejectWithValue }) => {
@@ -141,16 +137,21 @@ const userSlice = createSlice({
         state.fetchedUsers[action.payload.id] = action.payload;
       })
 
-      // Update user
+      // Update user (profile or password)
       .addCase(updateUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(updateUser.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = action.payload;
+        const updated = action.payload; // now guaranteed to be user object
         state.fetchedUsers[updated.id] = updated;
-        if (state.info?.id === updated.id) state.info = updated; // update logged-in user if editing self
+
+        if (state.info?.id === updated.id) {
+          state.info = updated; // update logged-in user
+          const token = state.token;
+          localStorage.setItem("user", JSON.stringify({ user: updated, token }));
+        }
       })
       .addCase(updateUser.rejected, (state, action) => {
         state.loading = false;
@@ -166,7 +167,11 @@ const userSlice = createSlice({
         state.loading = false;
         const deletedId = action.payload.id;
         delete state.fetchedUsers[deletedId];
-        if (state.info?.id === deletedId) state.info = null; // log out if deleted self
+        if (state.info?.id === deletedId) {
+          state.info = null;
+          state.token = null;
+          localStorage.removeItem("user");
+        }
       })
       .addCase(deleteUser.rejected, (state, action) => {
         state.loading = false;

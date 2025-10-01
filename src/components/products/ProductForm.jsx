@@ -62,7 +62,11 @@ const ProductForm = ({ productId = null, onSuccess }) => {
     if (productId) dispatch(fetchProductById(productId));
   }, [dispatch, productId]);
 
-  // Populate formData when editing
+  // Helper to normalize image URLs
+  const normalizeImageUrl = (img) =>
+    img.startsWith("http") ? img : `http://localhost:5000/${img}`;
+
+  // Populate formData and existingImages
   useEffect(() => {
     if (currentProduct && productId) {
       setFormData({
@@ -90,11 +94,9 @@ const ProductForm = ({ productId = null, onSuccess }) => {
       });
 
       if (currentProduct.images) {
-        setExistingImages(
-          currentProduct.images.map((img) =>
-            img.startsWith("http") ? img : `http://localhost:5000/${img}`
-          )
-        );
+        setExistingImages(currentProduct.images.map(normalizeImageUrl));
+      } else {
+        setExistingImages([]);
       }
     }
   }, [currentProduct, productId]);
@@ -207,6 +209,8 @@ const ProductForm = ({ productId = null, onSuccess }) => {
 
       if (productId) {
         await dispatch(updateProduct({ id: productId, formData: data })).unwrap();
+        // Refetch product to get updated images
+        await dispatch(fetchProductById(productId));
         setMessage("✅ Product updated successfully!");
       } else {
         await dispatch(createProduct(data)).unwrap();
@@ -298,7 +302,9 @@ const ProductForm = ({ productId = null, onSuccess }) => {
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 text-white py-3 px-8 rounded-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="bg-blue-600 text-white py-3 px-8 rounded-lg font-semibold shadow-md 
+            hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 
+            transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading
               ? "Saving..."

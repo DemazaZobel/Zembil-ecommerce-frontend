@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import registerImg from "../../assets/logo.png"; 
+import registerImg from "../../assets/logo.png";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "../../features/user/userSlice";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -25,7 +27,7 @@ const Register = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Check password strength in real-time
+  // Check password strength
   useEffect(() => {
     const errors = [];
     if (formData.password.length < 8) errors.push("At least 8 characters");
@@ -40,33 +42,38 @@ const Register = () => {
     e.preventDefault();
 
     if (passwordErrors.length > 0) {
-      alert("Please fix the password errors before submitting.");
+      toast.error("Please fix the password errors before submitting.");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
     try {
       const resultAction = await dispatch(registerUser(formData));
       if (registerUser.fulfilled.match(resultAction)) {
-        navigate("/"); 
+        toast.success("Registration successful! Redirecting...");
+        setTimeout(() => navigate("/"), 2000);
       }
     } catch (err) {
+      toast.error("Registration failed. Try again.");
       console.error(err);
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 -mt-32">
+      {/* Toast notification container */}
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+
       <h1 className="md:text-xl lg:text-2xl sm:text-xl italic text-gray-600 mb-10 text-center lg:mt-24 md:mt-24 mt-20">
         Caring Style, Delivering Smiles
       </h1>
 
       <div className="flex flex-col lg:flex-row bg-white rounded-3xl overflow-hidden w-full max-w-5xl">
-        {/* Left Side - Image */}
+        {/* Left Side */}
         <div className="lg:w-1/2 flex flex-col items-center">
           <img
             src={registerImg}
@@ -82,7 +89,7 @@ const Register = () => {
           </div>
         </div>
 
-        {/* Right Side - Registration Form */}
+        {/* Right Side */}
         <div className="lg:w-1/2 p-8 sm:p-12 flex flex-col justify-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Register</h2>
 
@@ -106,7 +113,7 @@ const Register = () => {
               className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
 
-            {/* Password Field */}
+            {/* Password */}
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -125,7 +132,7 @@ const Register = () => {
               </span>
             </div>
 
-            {/* Password Validation Feedback */}
+            {/* Password Feedback */}
             {formData.password && (
               <ul className="text-xs mt-1 mb-2 space-y-1 text-red-500">
                 {passwordErrors.length === 0 ? (
@@ -136,7 +143,7 @@ const Register = () => {
               </ul>
             )}
 
-            {/* Confirm Password Field */}
+            {/* Confirm Password */}
             <div className="relative">
               <input
                 type={showConfirmPassword ? "text" : "password"}

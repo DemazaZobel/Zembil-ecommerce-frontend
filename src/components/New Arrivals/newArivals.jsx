@@ -1,19 +1,21 @@
 // src/components/products/NewArrivals.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useLocation  } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FaStar, FaRegStar, FaTimes, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { addToCart } from "../../features/cart/cartSlice";
 import { fetchProducts } from "../../features/product/productSlice";
+import { getReviewsByProduct } from "../../features/Review/reviewSlice";
 
 const NewArrivals = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { info } = useSelector((state) => state.user);
   const location = useLocation();
-
+  const { info } = useSelector((state) => state.user);
   const { products, loading } = useSelector((state) => state.products);
+  const { productReviews } = useSelector((state) => state.review || {});
+
   const [newArrivals, setNewArrivals] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedSize, setSelectedSize] = useState("");
@@ -37,17 +39,37 @@ const NewArrivals = () => {
     }
   }, [products]);
 
-  const goToProductDetail = (product) => {
-    navigate(`/product/${product.id}`, { state: { product } });
+  // --- Reviews ---
+  const fetchReviews = (productId) => {
+    dispatch(getReviewsByProduct(productId));
   };
 
+  const getAverageRating = (productId) => {
+    const reviews = productReviews?.[productId] || [];
+    if (!reviews.length) return 0;
+
+    const validRatings = reviews
+      .map((r) => Number(r.rating))
+      .filter((num) => !isNaN(num));
+
+    if (!validRatings.length) return 0;
+
+    const sum = validRatings.reduce((acc, num) => acc + num, 0);
+    return sum / validRatings.length;
+  };
+
+  const LoggedUser = localStorage.getItem("user");
+
+  // --- Modal ---
   const openModal = (product) => {
     setSelectedProduct(product);
-    setSelectedSize(product.sizes?.[0]?.sizeId || "");
+    const firstAvailable = product.sizes?.find((s) => s.stock > 0);
+    setSelectedSize(firstAvailable?.sizeId || "");
     setQuantity(1);
-    setCurrentImageIndex(0); // Reset carousel
+    setCurrentImageIndex(0);
     setIsModalOpen(true);
     document.body.style.overflow = "hidden";
+    fetchReviews(product.id);
   };
 
   const closeModal = () => {
@@ -55,19 +77,32 @@ const NewArrivals = () => {
     document.body.style.overflow = "auto";
   };
 
- const handleAddToCart = () => {
-  if (!selectedProduct || !selectedSize) return;
+  const handleAddToCart = () => {
+    if (!selectedProduct) return;
 
-  dispatch(
-    addToCart({
-      productId: selectedProduct.id,
-      quantity,
-      sizeId: Number(selectedSize), // make sure it's a number
-    })
-  );
-  closeModal();
-};
+    const sizeObj = selectedProduct.sizes?.find((s) => s.sizeId === Number(selectedSize));
+    if (!sizeObj) {
+      toast.error("Please select a size before adding to cart");
+      return;
+    }
+    if (sizeObj.stock === 0) {
+      toast.error("Selected size is out of stock");
+      return;
+    }
+    if (quantity <= 0) {
+      toast.error("Quantity must be at least 1");
+      return;
+    }
 
+    dispatch(
+      addToCart({
+        productId: selectedProduct.id,
+        sizeId: sizeObj.sizeId,
+        quantity,
+      })
+    );
+    closeModal();
+  };
 
   const prevImage = () => {
     setCurrentImageIndex((prev) =>
@@ -89,74 +124,89 @@ const NewArrivals = () => {
 
       {/* Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-8 max-w-5xl mx-auto justify-center min-w-[350px]">
-        {newArrivals.map((item) => (
-          <div
-            key={item.id}
-            className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer"
-            onClick={() => goToProductDetail(item)}
-          >
-            <div className="relative overflow-hidden">
-              <img
-                src={`http://localhost:5000/${item.images?.[0]}`}
-                alt={item.name}
-                className="w-full h-40 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">
-                NEW
+        {newArrivals.map((item) => {
+          const avgRating = getAverageRating(item.id);
+          const reviews = productReviews?.[item.id] || [];
+          return (
+            <div
+              key={item.id}
+              className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer"
+              onClick={() => navigate(`/product/${item.id}`, { state: { product: item } })}
+            >
+              <div className="relative overflow-hidden">
+                <img
+                  src={`http://localhost:5000/${item.images?.[0]}`}
+                  alt={item.name}
+                  className="w-full sm:h-98 group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">
+                  NEW
+                </div>
               </div>
-            </div>
 
-            <div className="p-3 sm:p-4">
-              <h3 className="font-semibold text-gray-800 text-sm sm:text-base truncate mb-1">{item.name}</h3>
-              {item.description && (
-                <p className="text-xs text-gray-600 line-clamp-2 mb-1">{item.description}</p>
-              )}
-
-              {/* Rating */}
-              <div className="flex items-center mb-1">
-                {[...Array(5)].map((_, i) =>
-                  i < (item.rating || 0) ? (
-                    <FaStar key={i} className="text-yellow-400 mr-1 text-xs sm:text-sm" />
-                  ) : (
-                    <FaRegStar key={i} className="text-gray-300 mr-1 text-xs sm:text-sm" />
-                  )
+              <div className="p-3 sm:p-4">
+                <h3 className="font-semibold text-gray-800 text-sm sm:text-base truncate mb-1">{item.name}</h3>
+                {item.description && (
+                  <p className="text-xs text-gray-600 line-clamp-2 mb-1">{item.description}</p>
                 )}
-                <span className="text-xs text-gray-500 ml-1">({item.rating || 0})</span>
+
+                {/* Rating */}
+                <div className="flex items-center mb-1">
+                  {reviews.length > 0 ? (
+                    <>
+                      {[...Array(5)].map((_, i) =>
+                        i < Math.round(avgRating) ? (
+                          <FaStar key={i} className="text-yellow-400 mr-1 text-xs sm:text-sm" />
+                        ) : (
+                          <FaRegStar key={i} className="text-gray-300 mr-1 text-xs sm:text-sm" />
+                        )
+                      )}
+                      <span className="text-xs text-gray-500 ml-1">
+                        {avgRating ? avgRating.toFixed(1) : "0.0"} ({reviews.length} reviews)
+                      </span>
+                    </>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/product/${item.id}`);
+                      }}
+                      className="text-xs text-blue-500 underline"
+                    >
+                      No reviews – be the first!
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-col md:flex-row justify-between items-center">
+                  <span className="text-[#3674B5] font-bold text-base sm:text-lg mb-1 md:mb-0">
+                    ${item.price}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (info) {
+                        openModal(item);
+                      } else {
+                        toast.error("Please login first");
+                        navigate("/login", { state: { from: location } });
+                      }
+                    }}
+                    className="w-full md:w-auto mt-1 md:mt-0 bg-[#3674B5] text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    {LoggedUser ? "Add to Cart" : "Login to Purchase"}
+                  </button>
+                </div>
               </div>
-
-           
-
-              <div className="flex flex-col md:flex-row justify-between items-center">
-                <span className="text-[#3674B5] font-bold text-base sm:text-lg mb-1 md:mb-0">
-                  ${item.price}
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (info) {
-                      // User is logged in
-                      openModal(item);
-                    } else {
-                      // User not logged in
-                      toast.error("Please login first");
-                      navigate("/login", { state: { from: location } });
-                    }
-                  }}
-                  className="w-full md:w-auto mt-1 md:mt-0 bg-[#3674B5] text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Add to Cart
-                </button>
-              </div>
-
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Modal */}
       {isModalOpen && selectedProduct && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative overflow-auto max-h-[90vh]">
             <button onClick={closeModal} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
               <FaTimes />
             </button>
@@ -191,29 +241,66 @@ const NewArrivals = () => {
             </div>
 
             <h3 className="text-lg font-bold text-center mb-2">{selectedProduct.name}</h3>
-            <p className="text-sm text-gray-500 text-center mb-4">{selectedProduct.description}</p>
+            <p className="text-sm text-gray-500 text-center mb-2">{selectedProduct.description}</p>
 
-            {/* Custom Size Selector */}
-            <div className="mb-4">
-              <label className="block mb-1 text-sm font-medium">Size:</label>
-              <div className="flex flex-wrap gap-2">
-                {selectedProduct.sizes.map((size) => {
-                  const sizeId = size.sizeId || size;
-                  const sizeName = size.name || size;
-                  const isSelected = selectedSize === sizeId;
+            {/* Modal Rating */}
+            <div className="flex justify-center mb-4">
+              {(() => {
+                const avgRating = getAverageRating(selectedProduct.id);
+                const reviews = productReviews?.[selectedProduct.id] || [];
+                if (reviews.length > 0) {
+                  return (
+                    <>
+                      {[...Array(5)].map((_, i) =>
+                        i < Math.round(avgRating) ? (
+                          <FaStar key={i} className="text-yellow-400 mr-1" />
+                        ) : (
+                          <FaRegStar key={i} className="text-gray-300 mr-1" />
+                        )
+                      )}
+                      <span className="text-xs text-gray-600 ml-1">
+                        {avgRating ? avgRating.toFixed(1) : "0.0"} ({reviews.length} reviews)
+                      </span>
+                    </>
+                  );
+                } else {
                   return (
                     <button
-                      key={sizeId}
-                      onClick={() => setSelectedSize(sizeId)}
-                      className={`px-3 py-1 border rounded-lg text-sm font-medium ${
-                        isSelected ? "bg-[#3674B5] text-white border-[#3674B5]" : "bg-white text-gray-700 border-gray-300"
-                      } hover:bg-[#3674B5] hover:text-white transition`}
+                      onClick={() => {
+                        closeModal();
+                        navigate(`/product/${selectedProduct.id}`);
+                      }}
+                      className="text-xs text-blue-500 underline"
                     >
-                      {sizeName}
+                      No reviews – be the first!
                     </button>
                   );
-                })}
-              </div>
+                }
+              })()}
+            </div>
+
+            {/* Custom Size Selector */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              {selectedProduct.sizes.map((size) => {
+                const sizeId = size.sizeId;
+                const isSelected = selectedSize === sizeId;
+                const isOutOfStock = size.stock === 0;
+                return (
+                  <button
+                    key={sizeId}
+                    onClick={() => !isOutOfStock && setSelectedSize(sizeId)}
+                    className={`px-3 py-1 border rounded-lg text-sm font-medium transition ${
+                      isSelected
+                        ? "bg-[#3674B5] text-white border-[#3674B5]"
+                        : isOutOfStock
+                        ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-[#3674B5] hover:text-white"
+                    }`}
+                  >
+                    {size.name} ({size.stock})
+                  </button>
+                );
+              })}
             </div>
 
             {/* Quantity */}
@@ -230,14 +317,21 @@ const NewArrivals = () => {
 
             <button
               onClick={handleAddToCart}
-              disabled={quantity <= 0}
+              disabled={
+                quantity <= 0 ||
+                !selectedSize ||
+                selectedProduct.sizes.find((s) => s.sizeId === Number(selectedSize))?.stock === 0
+              }
               className={`w-full py-2 rounded-lg text-white transition ${
-                quantity <= 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#3674B5] hover:bg-blue-700"
+                quantity <= 0 ||
+                !selectedSize ||
+                selectedProduct.sizes.find((s) => s.sizeId === Number(selectedSize))?.stock === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-[#3674B5] hover:bg-blue-700"
               }`}
             >
-              Add to Cart
+              {LoggedUser ? "Add to Cart" : "Login to Purchase"}
             </button>
-
           </div>
         </div>
       )}

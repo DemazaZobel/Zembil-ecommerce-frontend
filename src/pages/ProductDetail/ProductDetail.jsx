@@ -22,6 +22,7 @@ const ProductDetail = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [popup, setPopup] = useState(null); // <-- popup state
+  const LoggedUser= localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : null;
 
   // Fetch product by ID
   useEffect(() => {
@@ -39,7 +40,10 @@ const ProductDetail = () => {
         ? [product.images]
         : [];
       setMainImage(images[0] || "");
-      setSelectedSize(product.sizes?.[0]?.sizeId || "");
+
+      // Preselect the first size with stock > 0
+      const firstAvailableSize = product.sizes?.find((s) => s.stock > 0);
+      setSelectedSize(firstAvailableSize?.sizeId || "");
     }
   }, [product]);
 
@@ -59,18 +63,26 @@ const ProductDetail = () => {
 
   const handleAddToCart = async () => {
     if (product.sizes?.length > 0 && !selectedSize) {
-      setPopup("Please select a size before adding to cart."); // notification
+      setPopup("Please select a size before adding to cart.");
       setTimeout(() => setPopup(null), 2000);
       return;
     }
 
     if (quantity <= 0) {
-      setPopup("Quantity must be at least 1"); // notification
+      setPopup("Quantity must be at least 1");
       setTimeout(() => setPopup(null), 2000);
       return;
     }
 
-    const sizeObj = product.sizes?.find((s) => s.sizeId === Number(selectedSize));
+    const sizeObj = product.sizes?.find(
+      (s) => s.sizeId === Number(selectedSize)
+    );
+
+    if (sizeObj?.stock === 0) {
+      setPopup("Selected size is out of stock");
+      setTimeout(() => setPopup(null), 2000);
+      return;
+    }
 
     try {
       await dispatch(
@@ -82,7 +94,6 @@ const ProductDetail = () => {
         })
       ).unwrap();
 
-      // Refresh cart
       dispatch(fetchCart());
 
       setPopup(`Added ${product.name} (${sizeObj?.name || "Default"}) to cart 🛒`);
@@ -150,15 +161,19 @@ const ProductDetail = () => {
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((sizeObj) => {
                     const isSelected = selectedSize === sizeObj.sizeId;
+                    const outOfStock = sizeObj.stock === 0;
                     return (
                       <button
                         key={sizeObj.sizeId}
-                        onClick={() => setSelectedSize(sizeObj.sizeId)}
-                        className={`px-3 py-1 border rounded-lg text-sm font-medium ${
-                          isSelected
+                        onClick={() => !outOfStock && setSelectedSize(sizeObj.sizeId)}
+                        disabled={outOfStock}
+                        className={`px-3 py-1 border rounded-lg text-sm font-medium transition
+                          ${outOfStock 
+                            ? "bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed"
+                            : isSelected
                             ? "bg-[#3674B5] text-white border-[#3674B5]"
-                            : "bg-white text-gray-700 border-gray-300"
-                        } hover:bg-[#3674B5] hover:text-white transition`}
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-[#3674B5] hover:text-white"
+                          }`}
                       >
                         {sizeObj.name} ({sizeObj.stock})
                       </button>
@@ -188,14 +203,18 @@ const ProductDetail = () => {
             {/* Add to Cart */}
             <button
               onClick={handleAddToCart}
-              disabled={quantity <= 0} // disable if quantity is 0
+              disabled={
+                quantity <= 0 ||
+                (selectedSize && product.sizes?.find(s => s.sizeId === Number(selectedSize))?.stock === 0)
+              }
               className={`mt-6 w-full px-4 py-3 rounded-md transition-colors ${
-                quantity <= 0
+                quantity <= 0 ||
+                (selectedSize && product.sizes?.find(s => s.sizeId === Number(selectedSize))?.stock === 0)
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-[#3674B5] text-white hover:bg-blue-700"
               }`}
             >
-              Add to Cart
+              {LoggedUser ? "Add to Cart" : "Login to Add to Cart"}
             </button>
           </div>
         </div>

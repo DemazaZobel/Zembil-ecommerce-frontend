@@ -1,21 +1,47 @@
 // src/features/delivery/deliverySlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
+  // ----- Admin API functions -----
+  fetchStaffAdminApi,
+  addStaffAdminApi,
+  updateStaffAdminApi,
+  deleteStaffAdminApi,
+  // ----- Delivery staff API functions -----
   fetchStaffApi,
-  fetchStaffByIdApi,   // ✅ new
-  addStaffApi,
-  updateStaffApi,
-  deleteStaffApi,
+  fetchStaffByIdApi,
+  loginStaffApi,
   fetchZonesApi,
   addZoneApi,
   updateZoneApi,
   deleteZoneApi,
-  loginStaffApi,
 } from "../../api/deliveryApi.js";
 
 //
-// ----- Staff Thunks -----
+// ----- Thunks -----
 //
+
+// ----- Admin Thunks -----
+export const fetchStaffAdmin = createAsyncThunk(
+  "delivery/fetchStaffAdmin",
+  fetchStaffAdminApi
+);
+
+export const addStaffAdmin = createAsyncThunk(
+  "delivery/addStaffAdmin",
+  addStaffAdminApi
+);
+
+export const updateStaffAdmin = createAsyncThunk(
+  "delivery/updateStaffAdmin",
+  async ({ id, payload }) => updateStaffAdminApi(id, payload)
+);
+
+export const deleteStaffAdmin = createAsyncThunk(
+  "delivery/deleteStaffAdmin",
+  async (id) => deleteStaffAdminApi(id)
+);
+
+// ----- Delivery Staff Thunks -----
 export const fetchStaff = createAsyncThunk("delivery/fetchStaff", fetchStaffApi);
 
 export const fetchStaffById = createAsyncThunk(
@@ -23,38 +49,31 @@ export const fetchStaffById = createAsyncThunk(
   async (id) => fetchStaffByIdApi(id)
 );
 
-export const addStaff = createAsyncThunk("delivery/addStaff", addStaffApi);
+export const addStaff = createAsyncThunk("delivery/addStaff", addStaffAdminApi);
 
 export const updateStaff = createAsyncThunk(
   "delivery/updateStaff",
-  async ({ id, payload }) => updateStaffApi(id, payload)
+  async ({ id, payload }) => updateStaffAdminApi(id, payload)
 );
 
 export const deleteStaff = createAsyncThunk(
   "delivery/deleteStaff",
-  async (id) => deleteStaffApi(id)
+  async (id) => deleteStaffAdminApi(id)
 );
 
-//
 // ----- Zone Thunks -----
-//
 export const fetchZones = createAsyncThunk("delivery/fetchZones", fetchZonesApi);
-
 export const addZone = createAsyncThunk("delivery/addZone", addZoneApi);
-
 export const updateZone = createAsyncThunk(
   "delivery/updateZone",
   async ({ id, payload }) => updateZoneApi(id, payload)
 );
-
 export const deleteZone = createAsyncThunk(
   "delivery/deleteZone",
   async (id) => deleteZoneApi(id)
 );
 
-//
 // ----- Delivery Staff Login -----
-//
 export const deliveryLogin = createAsyncThunk(
   "delivery/login",
   async ({ email, password }, { rejectWithValue }) => {
@@ -79,7 +98,7 @@ const deliverySlice = createSlice({
   name: "delivery",
   initialState: {
     staff: [],
-    selectedStaff: null,   // ✅ for single staff
+    selectedStaff: null,
     zones: [],
     loading: false,
     error: null,
@@ -103,7 +122,33 @@ const deliverySlice = createSlice({
   extraReducers: (builder) => {
     builder
       //
-      // --- Staff ---
+      // --- Admin Staff ---
+      //
+      .addCase(fetchStaffAdmin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchStaffAdmin.fulfilled, (state, action) => {
+        state.staff = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchStaffAdmin.rejected, (state, action) => {
+        state.error = action.error.message;
+        state.loading = false;
+      })
+      .addCase(addStaffAdmin.fulfilled, (state, action) => {
+        state.staff.push(action.payload);
+      })
+      .addCase(updateStaffAdmin.fulfilled, (state, action) => {
+        const idx = state.staff.findIndex((s) => s.id === action.payload.id);
+        if (idx !== -1) state.staff[idx] = action.payload;
+      })
+      .addCase(deleteStaffAdmin.fulfilled, (state, action) => {
+        state.staff = state.staff.filter((s) => s.id !== action.payload.id);
+      })
+
+      //
+      // --- Delivery Staff ---
       //
       .addCase(fetchStaff.pending, (state) => {
         state.loading = true;
@@ -118,7 +163,7 @@ const deliverySlice = createSlice({
         state.loading = false;
       })
 
-      // ✅ new case for single staff
+      // Single staff
       .addCase(fetchStaffById.pending, (state) => {
         state.loading = true;
         state.error = null;

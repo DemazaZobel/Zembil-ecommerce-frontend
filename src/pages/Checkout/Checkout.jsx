@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import OrderPopup from "../../components/order/OrderPopup";
+import MessageBox from "../../components/common/MessageBox"; 
 import { fetchCart } from "../../features/cart/cartSlice";
 import { getShippingAddresses, addShippingAddress } from "../../features/shipping/shipmentSlice";
 import { fetchZones } from "../../features/delivery/deliverySlice";
@@ -10,13 +11,11 @@ import { fetchProducts } from "../../features/product/productSlice";
 const Checkout = () => {
   const dispatch = useDispatch();
 
-  // Redux state
   const { items: cartItems } = useSelector((state) => state.cart);
   const { addresses: shippingAddresses, loading: shippingLoading } = useSelector((state) => state.shipping);
   const { info: user } = useSelector((state) => state.user);
   const { zones } = useSelector((state) => state.delivery);
 
-  // Billing form
   const [billing, setBilling] = useState({
     fullName: user?.name || "",
     houseNumber: "",
@@ -27,15 +26,23 @@ const Checkout = () => {
     country: "Ethiopia",
     postalCode: "",
     phoneNumber: user?.phone || "",
-    zoneId: "",
+    zoneId: localStorage.getItem("selectedZoneId") || "",
   });
 
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("creditCard");
   const [popupVisible, setPopupVisible] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
+  const [message, setMessage] = useState(null);
+  const [messageType, setMessageType] = useState("info");
 
-  // Load cart, shipping addresses & zones
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   useEffect(() => {
     dispatch(fetchProducts());
     dispatch(fetchCart());
@@ -43,7 +50,7 @@ const Checkout = () => {
     dispatch(fetchZones());
   }, [dispatch]);
 
-  // Pre-fill billing if user has a previous address
+  // Pre-fill billing from previous address
   useEffect(() => {
     if (shippingAddresses.length > 0) {
       const myAddress = shippingAddresses.find(addr => addr.userId === user?.id);
@@ -59,7 +66,7 @@ const Checkout = () => {
           country: "Ethiopia",
           postalCode: myAddress.postalCode || "",
           phoneNumber: myAddress.phoneNumber,
-          zoneId: myAddress.zoneId || "",
+          zoneId: myAddress.zoneId || localStorage.getItem("selectedZoneId") || "",
         });
       }
     }
@@ -70,17 +77,18 @@ const Checkout = () => {
   };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
   const userAddresses = shippingAddresses.filter(addr => addr.userId === user?.id);
   const canPlaceOrder = selectedAddress && billing.fullName && billing.street && billing.city;
 
   const handlePlaceOrder = async () => {
     if (!canPlaceOrder) {
-      alert("Please select or save a shipping address before placing your order.");
+      setMessage("⚠️ Please select or save a shipping address before placing your order.");
+      setMessageType("error");
       return;
     }
     if (cartItems.length === 0) {
-      alert("Your cart is empty.");
+      setMessage("⚠️ Your cart is empty.");
+      setMessageType("error");
       return;
     }
 
@@ -90,19 +98,50 @@ const Checkout = () => {
           cartItems,
           shippingAddressId: selectedAddress.id,
           paymentMethod,
-          zoneId: billing.zoneId,
+          zoneId: Number(billing.zoneId),
         })
       ).unwrap();
 
       setOrderNumber(resultAction.id || "12345ABC");
       setPopupVisible(true);
+      setMessage("✅ Order placed successfully!");
+      setMessageType("success");
     } catch (err) {
-      alert("Failed to place order: " + err);
+      setMessage("❌ Failed to place order: " + err);
+      setMessageType("error");
     }
+  };
+
+  const handleSaveAddress = () => {
+    if (!billing.fullName || !billing.street || !billing.city) {
+      setMessage("⚠️ Please fill Full Name, Street, and City to save address.");
+      setMessageType("error");
+      return;
+    }
+
+    dispatch(addShippingAddress({ ...billing, userId: user?.id }));
+
+    const savedAddress = {
+      ...billing,
+      id: selectedAddress?.id || Date.now(),
+    };
+    setSelectedAddress(savedAddress);
+
+    // Save zoneId to localStorage
+    localStorage.setItem("selectedZoneId", billing.zoneId);
+
+    setMessage("✅ Address saved successfully!");
+    setMessageType("success");
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {message && (
+        <div className="mb-4">
+          <MessageBox type={messageType} message={message} onClose={() => setMessage(null)} />
+        </div>
+      )}
+
       <h1 className="text-3xl font-bold mb-8 text-gray-900 text-center">🛒 Checkout</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -114,7 +153,6 @@ const Checkout = () => {
             <p>Loading addresses...</p>
           ) : (
             <>
-              {/* Saved Addresses */}
               {userAddresses.length > 0 ? (
                 <div className="space-y-4 mb-6">
                   {userAddresses.map((addr) => (
@@ -128,7 +166,6 @@ const Checkout = () => {
                         </p>
                         <p className="text-gray-700 text-sm">Phone: {addr.phoneNumber}</p>
                       </div>
-
                       <div className="flex flex-col items-end gap-2">
                         <button
                           className={`px-3 py-1 rounded-lg text-white ${
@@ -146,21 +183,11 @@ const Checkout = () => {
                               country: "Ethiopia",
                               postalCode: addr.postalCode || "",
                               phoneNumber: addr.phoneNumber,
-                              zoneId: addr.zoneId || "",
+                              zoneId: addr.zoneId || localStorage.getItem("selectedZoneId") || "",
                             });
                           }}
                         >
                           {selectedAddress?.id === addr.id ? "Selected" : "Select"}
-                        </button>
-
-                        <button
-                          className="px-3 py-1 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
-                          onClick={() => {
-                            setSelectedAddress(addr);
-                            document.getElementById("billing-form")?.scrollIntoView({ behavior: "smooth" });
-                          }}
-                        >
-                          Edit
                         </button>
                       </div>
                     </div>
@@ -172,7 +199,7 @@ const Checkout = () => {
             </>
           )}
 
-          {/* Billing Inputs */}
+          {/* Billing Form */}
           <div id="billing-form" className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             {["fullName", "houseNumber", "street", "area", "specificTown", "city", "postalCode", "phoneNumber"].map(
               (field) => (
@@ -222,14 +249,7 @@ const Checkout = () => {
           <div className="mb-6">
             <button
               type="button"
-              onClick={() => {
-                if (!billing.fullName || !billing.street || !billing.city) {
-                  alert("Please fill Full Name, Street, and City to save address.");
-                  return;
-                }
-                dispatch(addShippingAddress({ ...billing, userId: user?.id }));
-                alert("Address saved successfully!");
-              }}
+              onClick={handleSaveAddress}
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
             >
               Save Address

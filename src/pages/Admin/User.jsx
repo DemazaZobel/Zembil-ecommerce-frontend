@@ -1,43 +1,65 @@
 // src/pages/admin/UsersDashboard.jsx
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchUserById,
-  updateUser,
-  deleteUser,
-} from "../../features/user/userSlice";
-import { getAllUsers } from "../../api/userApi"; // API call to get all users
+import { fetchUserById, updateUser, deleteUser } from "../../features/user/userSlice";
+import { getAllUsers } from "../../api/userApi";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const UsersDashboard = () => {
   const dispatch = useDispatch();
-  const { fetchedUsers, loading, error } = useSelector((state) => state.user);
+  const { loading, error } = useSelector((state) => state.user);
   const [users, setUsers] = React.useState([]);
 
-  // Fetch all users from backend
+  // Fetch all users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const data = await getAllUsers();
         setUsers(data);
       } catch (err) {
-        console.error(err);
+        toast.error(err.message || "Failed to fetch users");
       }
     };
     fetchUsers();
   }, []);
 
-  const handleDelete = (userId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      dispatch(deleteUser(userId));
-      setUsers((prev) => prev.filter((user) => user.id !== userId));
-    }
+  // Delete user with toast confirmation
+  const handleDelete = (user) => {
+    toast.info(
+      <div>
+        Are you sure you want to delete <b>{user.name}</b>?
+        <div className="mt-2 flex gap-2 justify-end">
+          <button
+            className="bg-red-500 text-white px-3 py-1 rounded"
+            onClick={() => {
+              dispatch(deleteUser(user.id));
+              setUsers((prev) => prev.filter((u) => u.id !== user.id));
+              toast.dismiss();
+              toast.success("User deleted successfully");
+            }}
+          >
+            Yes
+          </button>
+          <button
+            className="bg-gray-300 text-gray-800 px-3 py-1 rounded"
+            onClick={() => toast.dismiss()}
+          >
+            No
+          </button>
+        </div>
+      </div>,
+      { autoClose: false, closeOnClick: false }
+    );
   };
 
+  // Update user role
   const handleUpdateRole = (userId, newRole) => {
     dispatch(updateUser({ userId, userData: { role: newRole } }));
     setUsers((prev) =>
       prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user))
     );
+    toast.success(`Role updated to ${newRole}`);
   };
 
   if (loading)
@@ -56,6 +78,8 @@ const UsersDashboard = () => {
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">Users List</h2>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -88,11 +112,11 @@ const UsersDashboard = () => {
                     handleUpdateRole(user.id, user.role === "admin" ? "user" : "admin")
                   }
                 >
-                  Toggle Role
+                  Change Role
                 </button>
                 <button
                   className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
-                  onClick={() => handleDelete(user.id)}
+                  onClick={() => handleDelete(user)}
                 >
                   Delete
                 </button>

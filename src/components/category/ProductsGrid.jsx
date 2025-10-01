@@ -10,12 +10,14 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, fetchCart } from "../../features/cart/cartSlice";
 import { getReviewsByProduct } from "../../features/Review/reviewSlice";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import placeholderImage from "../../assets/placeholder.png";
 
 const ProductsGrid = ({ items }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [wishlist, setWishlist] = useState([]);
   const [popup, setPopup] = useState(null);
   const [modalProduct, setModalProduct] = useState(null);
@@ -25,6 +27,7 @@ const ProductsGrid = ({ items }) => {
   const [showSizes, setShowSizes] = useState(false);
 
   const { productReviews } = useSelector((state) => state.review || {});
+  const LoggedUser = localStorage.getItem("user");
 
   // --- Wishlist ---
   const toggleWishlist = (id) => {
@@ -35,8 +38,16 @@ const ProductsGrid = ({ items }) => {
 
   // --- Modal handlers ---
   const openModal = (product) => {
+    if (!LoggedUser) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     setModalProduct(product);
-    setSelectedSize(product.sizes?.[0]?.sizeId || "");
+
+    // Select first available size with stock > 0
+    const firstAvailable = product.sizes?.find((s) => s.stock > 0);
+    setSelectedSize(firstAvailable?.sizeId || "");
     setQuantity(1);
     setCarouselIndex(0);
     setShowSizes(false);
@@ -53,19 +64,35 @@ const ProductsGrid = ({ items }) => {
 
   const handleAddToCart = async () => {
     if (!modalProduct) return;
-    if (!selectedSize)
-      return alert("Please select a size before adding to cart.");
 
-    const sizeObj = modalProduct.sizes.find(
+    const sizeObj = modalProduct.sizes?.find(
       (s) => s.sizeId === Number(selectedSize)
     );
+
+    if (!sizeObj) {
+      setPopup("Please select a size before adding to cart.");
+      setTimeout(() => setPopup(null), 2000);
+      return;
+    }
+
+    if (sizeObj.stock === 0) {
+      setPopup("Selected size is out of stock.");
+      setTimeout(() => setPopup(null), 2000);
+      return;
+    }
+
+    if (quantity <= 0) {
+      setPopup("Quantity must be at least 1.");
+      setTimeout(() => setPopup(null), 2000);
+      return;
+    }
 
     try {
       await dispatch(
         addToCart({
           productId: modalProduct.id,
-          quantity,
           sizeId: sizeObj.sizeId,
+          quantity,
         })
       ).unwrap();
 
@@ -76,7 +103,8 @@ const ProductsGrid = ({ items }) => {
       setTimeout(() => setPopup(null), 2000);
     } catch (err) {
       console.error(err);
-      alert("Failed to add to cart. Please try again.");
+      setPopup("Failed to add to cart. Please try again.");
+      setTimeout(() => setPopup(null), 2000);
     }
   };
 
@@ -96,7 +124,6 @@ const ProductsGrid = ({ items }) => {
     );
   };
 
-  // --- Calculate average rating ---
   const getAverageRating = (productId) => {
     const reviews = productReviews?.[productId] || [];
     if (!reviews.length) return 0;
@@ -134,26 +161,14 @@ const ProductsGrid = ({ items }) => {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={() => toggleWishlist(item.id)}
-                className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-red-50 transition-colors duration-300 z-10"
-              >
-                <FaHeart
-                  className={
-                    wishlist.includes(item.id) ? "text-red-500" : "text-gray-400"
-                  }
-                />
-              </button>
+              
 
               <div className="p-4" onClick={() => handleCardClick(item.id)}>
                 <h3 className="font-semibold text-gray-800 truncate mb-1">
                   {item.name}
                 </h3>
                 {item.category?.type && (
-                  <p className="text-sm text-gray-500 mb-1">
-                    {item.category.type}
-                  </p>
+                  <p className="text-sm text-gray-500 mb-1">{item.category.type}</p>
                 )}
                 {item.description && (
                   <p className="text-xs text-gray-600 line-clamp-2 mb-2">
@@ -167,15 +182,9 @@ const ProductsGrid = ({ items }) => {
                     <>
                       {[...Array(5)].map((_, i) =>
                         i < Math.round(avgRating) ? (
-                          <FaStar
-                            key={i}
-                            className="text-yellow-400 mr-1 text-xs"
-                          />
+                          <FaStar key={i} className="text-yellow-400 mr-1 text-xs" />
                         ) : (
-                          <FaRegStar
-                            key={i}
-                            className="text-gray-300 mr-1 text-xs"
-                          />
+                          <FaRegStar key={i} className="text-gray-300 mr-1 text-xs" />
                         )
                       )}
                       <span className="text-xs text-gray-600 ml-1">
@@ -196,9 +205,7 @@ const ProductsGrid = ({ items }) => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-center mt-2 gap-2">
-                  <span className="text-primary font-bold text-base">
-                    ${item.price}
-                  </span>
+                  <span className="text-primary font-bold text-base">${item.price}</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -206,7 +213,7 @@ const ProductsGrid = ({ items }) => {
                     }}
                     className="bg-primary text-white px-3 py-1 rounded-full text-xs hover:bg-secondary transition-colors w-full sm:w-auto"
                   >
-                    Add to Cart
+                    {LoggedUser ? "Add to Cart" : "Login to Purchase"}
                   </button>
                 </div>
               </div>
@@ -227,12 +234,14 @@ const ProductsGrid = ({ items }) => {
             </button>
 
             <div className="relative w-full h-64 mb-4 flex items-center justify-center">
-              <button
-                onClick={prevImage}
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow hover:bg-gray-100 z-10"
-              >
-                <FaChevronLeft />
-              </button>
+              {modalProduct.images && modalProduct.images.length > 1 && (
+                <button
+                  onClick={prevImage}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow hover:bg-gray-100 z-10"
+                >
+                  <FaChevronLeft />
+                </button>
+              )}
 
               <img
                 src={
@@ -244,26 +253,24 @@ const ProductsGrid = ({ items }) => {
                 className="w-64 h-64 object-cover rounded-lg"
               />
 
-              <button
-                onClick={nextImage}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow hover:bg-gray-100 z-10"
-              >
-                <FaChevronRight />
-              </button>
+              {modalProduct.images && modalProduct.images.length > 1 && (
+                <button
+                  onClick={nextImage}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow hover:bg-gray-100 z-10"
+                >
+                  <FaChevronRight />
+                </button>
+              )}
             </div>
 
-            <h3 className="text-lg font-bold text-center mb-2">
-              {modalProduct.name}
-            </h3>
+            <h3 className="text-lg font-bold text-center mb-2">{modalProduct.name}</h3>
             {modalProduct.category?.type && (
               <p className="text-sm text-gray-500 text-center mb-1">
                 {modalProduct.category.type}
               </p>
             )}
             {modalProduct.description && (
-              <p className="text-xs text-gray-600 text-center mb-2">
-                {modalProduct.description}
-              </p>
+              <p className="text-xs text-gray-600 text-center mb-2">{modalProduct.description}</p>
             )}
 
             {/* Modal rating */}
@@ -302,25 +309,31 @@ const ProductsGrid = ({ items }) => {
               })()}
             </div>
 
+            {/* Size selector */}
             <div className="mb-4 relative">
               <label className="block mb-1 text-sm font-medium">Size:</label>
               <button
                 onClick={() => setShowSizes(!showSizes)}
                 className="w-full border rounded px-3 py-2 text-left"
               >
-                {modalProduct.sizes.find(
-                  (s) => s.sizeId === Number(selectedSize)
-                )?.name || "Select size"}
+                {modalProduct.sizes.find((s) => s.sizeId === Number(selectedSize))
+                  ?.name || "Select size"}
               </button>
               {showSizes && (
                 <ul className="absolute z-50 w-full bg-white border rounded mt-1 max-h-40 overflow-auto shadow-lg">
                   {modalProduct.sizes.map((size) => (
                     <li
                       key={size.sizeId}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                      className={`px-3 py-2 ${
+                        size.stock === 0
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "hover:bg-gray-100 cursor-pointer"
+                      }`}
                       onClick={() => {
-                        setSelectedSize(size.sizeId);
-                        setShowSizes(false);
+                        if (size.stock > 0) {
+                          setSelectedSize(size.sizeId);
+                          setShowSizes(false);
+                        }
                       }}
                     >
                       {size.name} ({size.stock})
@@ -330,6 +343,7 @@ const ProductsGrid = ({ items }) => {
               )}
             </div>
 
+            {/* Quantity */}
             <div className="mb-4">
               <label className="block mb-1 text-sm font-medium">Quantity:</label>
               <input
@@ -341,21 +355,27 @@ const ProductsGrid = ({ items }) => {
               />
             </div>
 
+            {/* Add to Cart */}
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-2">
-              <span className="text-primary font-bold text-base">
-                ${modalProduct.price}
-              </span>
+              <span className="text-primary font-bold text-base">${modalProduct.price}</span>
               <button
                 onClick={handleAddToCart}
-                disabled={quantity <= 0}
-                className={`bg-primary text-white px-3 py-2 rounded-lg text-sm w-full sm:w-auto transition-colors
-                  ${
-                    quantity <= 0
-                      ? "bg-gray-400 cursor-not-allowed hover:bg-gray-400"
-                      : "hover:bg-secondary"
-                  }`}
+                disabled={
+                  quantity <= 0 ||
+                  !selectedSize ||
+                  modalProduct.sizes.find((s) => s.sizeId === Number(selectedSize))
+                    ?.stock === 0
+                }
+                className={`bg-primary text-white px-3 py-2 rounded-lg text-sm w-full sm:w-auto transition-colors ${
+                  quantity <= 0 ||
+                  !selectedSize ||
+                  modalProduct.sizes.find((s) => s.sizeId === Number(selectedSize))
+                    ?.stock === 0
+                    ? "bg-gray-400 cursor-not-allowed hover:bg-gray-400"
+                    : "hover:bg-secondary"
+                }`}
               >
-                Add to Cart
+                {LoggedUser ? "Add to Cart" : "Login to Purchase"}
               </button>
             </div>
           </div>
